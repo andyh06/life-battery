@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Button } from "@/components/ui/button";
 import type { RiskFactorLevelRow, RiskFactorRow, Sex, StateRow } from "@/lib/data";
 import { bmiFromImperial } from "@/lib/bmi";
@@ -8,12 +9,18 @@ import type { PredictResult } from "@/lib/predict";
 import { LandingScreen } from "./landing-screen";
 import { QuestionScreen } from "./question-screen";
 import { ResultScreen } from "./result/result-screen";
-import { StateSelect } from "./state-select";
+import { StatePicker } from "./state-picker";
 import type { Answers, QuestionStep, Stage, Tier, UnitSystem } from "./types";
 
 const DEFAULT_AGE = 30;
 const DEFAULT_HEIGHT_INCHES = 67; // 5'7", roughly the population average
 const DEFAULT_WEIGHT_LB = 160;
+
+const questionVariants = {
+  enter: (direction: number) => ({ x: direction > 0 ? 48 : -48, opacity: 0 }),
+  center: { x: 0, opacity: 1 },
+  exit: (direction: number) => ({ x: direction > 0 ? -48 : 48, opacity: 0 }),
+};
 
 interface LifeBatteryFlowProps {
   states: StateRow[];
@@ -22,6 +29,7 @@ interface LifeBatteryFlowProps {
 }
 
 export function LifeBatteryFlow({ states, riskFactors, riskFactorLevels }: LifeBatteryFlowProps) {
+  const prefersReducedMotion = useReducedMotion();
   const [stage, setStage] = useState<Stage>("landing");
   const [tier, setTier] = useState<Tier>("quick");
   const [stateFips, setStateFips] = useState<string | null>(null);
@@ -32,6 +40,7 @@ export function LifeBatteryFlow({ states, riskFactors, riskFactorLevels }: LifeB
   const [heightInches, setHeightInches] = useState(DEFAULT_HEIGHT_INCHES);
   const [weightLb, setWeightLb] = useState(DEFAULT_WEIGHT_LB);
   const [stepIndex, setStepIndex] = useState(0);
+  const [direction, setDirection] = useState<1 | -1>(1);
   const [result, setResult] = useState<PredictResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -58,12 +67,17 @@ export function LifeBatteryFlow({ states, riskFactors, riskFactorLevels }: LifeB
   }
 
   function handleSelectState(fips: string) {
+    // No extra fade here on purpose — the map's own zoom-to-bounds animation
+    // (see UsMap) is the entire transition into the questionnaire. Layering
+    // a cross-fade on top would fight it rather than continue it.
     setStateFips(fips);
     setStepIndex(0);
+    setDirection(1);
     setStage("questions");
   }
 
   function handleBack() {
+    setDirection(-1);
     if (stepIndex === 0) {
       setStage("select-state");
       return;
@@ -113,6 +127,7 @@ export function LifeBatteryFlow({ states, riskFactors, riskFactorLevels }: LifeB
   }
 
   function handleNext() {
+    setDirection(1);
     if (stepIndex < steps.length - 1) {
       setStepIndex((i) => i + 1);
       return;
@@ -135,53 +150,86 @@ export function LifeBatteryFlow({ states, riskFactors, riskFactorLevels }: LifeB
   }
 
   return (
-    <div className="flex flex-1 items-center justify-center p-4">
-      {stage === "landing" ? (
-        <LandingScreen
-          tier={tier}
-          quickCount={quickCount}
-          advancedCount={advancedCount}
-          onTierChange={setTier}
-          onBegin={() => setStage("select-state")}
-        />
-      ) : null}
-
-      {stage === "select-state" ? (
-        <div className="flex w-full max-w-sm flex-col gap-4">
-          <Button
-            variant="ghost"
-            className="w-fit"
-            onClick={() => setStage("landing")}
+    <div className="flex flex-1 items-center justify-center overflow-hidden p-4">
+      {/* Landing and the state picker cross-fade as one continuous motion —
+          the landing card fades out while the map fades and scales in,
+          rather than one screen finishing before the next starts. */}
+      <AnimatePresence mode="popLayout" initial={false}>
+        {stage === "landing" ? (
+          <motion.div
+            key="landing"
+            exit={{ opacity: 0 }}
+            transition={{ duration: prefersReducedMotion ? 0 : 0.4 }}
+            className="w-full max-w-sm"
           >
-            Back
-          </Button>
-          <p className="text-sm text-muted-foreground">Where do you live?</p>
-          <StateSelect states={states} value={stateFips} onSelect={handleSelectState} />
-        </div>
-      ) : null}
+            <LandingScreen
+              tier={tier}
+              quickCount={quickCount}
+              advancedCount={advancedCount}
+              onTierChange={setTier}
+              onBegin={() => setStage("select-state")}
+            />
+          </motion.div>
+        ) : null}
+
+        {stage === "select-state" ? (
+          <motion.div
+            key="select-state"
+            initial={{ opacity: 0, scale: 0.92 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{
+              duration: prefersReducedMotion ? 0 : 0.5,
+              ease: [0.22, 1, 0.36, 1],
+            }}
+            className="flex w-full flex-col items-center gap-4"
+          >
+            <div className="flex w-full max-w-3xl items-center justify-between">
+              <Button variant="ghost" onClick={() => setStage("landing")}>
+                Back
+              </Button>
+              <p className="text-sm text-muted-foreground">Select your state</p>
+              <div className="w-16" />
+            </div>
+            <StatePicker states={states} value={stateFips} onSelect={handleSelectState} />
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
 
       {stage === "questions" ? (
-        <QuestionScreen
-          step={steps[stepIndex]}
-          stepNumber={stepIndex + 1}
-          totalSteps={steps.length}
-          age={age}
-          sex={sex}
-          answers={answers}
-          allLevels={riskFactorLevels}
-          heightWeightUnit={heightWeightUnit}
-          heightInches={heightInches}
-          weightLb={weightLb}
-          onAgeChange={setAge}
-          onSexChange={setSex}
-          onAnswerChange={handleAnswerChange}
-          onHeightWeightUnitChange={setHeightWeightUnit}
-          onHeightInchesChange={setHeightInches}
-          onWeightLbChange={setWeightLb}
-          onBack={handleBack}
-          onNext={handleNext}
-          isLast={stepIndex === steps.length - 1}
-        />
+        <AnimatePresence mode="popLayout" custom={direction} initial={false}>
+          <motion.div
+            key={stepIndex}
+            custom={direction}
+            variants={questionVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{ duration: prefersReducedMotion ? 0 : 0.25, ease: "easeOut" }}
+            className="w-full max-w-sm"
+          >
+            <QuestionScreen
+              step={steps[stepIndex]}
+              stepNumber={stepIndex + 1}
+              totalSteps={steps.length}
+              age={age}
+              sex={sex}
+              answers={answers}
+              allLevels={riskFactorLevels}
+              heightWeightUnit={heightWeightUnit}
+              heightInches={heightInches}
+              weightLb={weightLb}
+              onAgeChange={setAge}
+              onSexChange={setSex}
+              onAnswerChange={handleAnswerChange}
+              onHeightWeightUnitChange={setHeightWeightUnit}
+              onHeightInchesChange={setHeightInches}
+              onWeightLbChange={setWeightLb}
+              onBack={handleBack}
+              onNext={handleNext}
+              isLast={stepIndex === steps.length - 1}
+            />
+          </motion.div>
+        </AnimatePresence>
       ) : null}
 
       {stage === "submitting" ? (
