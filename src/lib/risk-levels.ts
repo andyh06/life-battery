@@ -39,16 +39,3 @@ export function matchNumericLevel(
  * incidental side effect of an unmatched string.
  */
 export const SKIP_ANSWER = "__prefer_not_to_say__";
-
-/**
- * The alcohol question asks in drinks/month (0-120) so "I drink once a
- * month or less" has somewhere to go, but risk_factor_levels bounds for
- * alcohol are still in drinks/WEEK (unchanged, see migration_005). Convert
- * before band-matching, in both the live client preview and the server
- * route, so predict.ts and the existing bands stay untouched.
- */
-export const ALCOHOL_WEEKS_PER_MONTH = 4.345;
-
-export function alcoholMonthlyToWeekly(drinksPerMonth: number): number {
-  return drinksPerMonth / ALCOHOL_WEEKS_PER_MONTH;
-}

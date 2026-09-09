@@ -8,7 +8,7 @@ import {
   type RiskFactorLevelRow,
   type Sex,
 } from "@/lib/data";
-import { ALCOHOL_WEEKS_PER_MONTH, matchNumericLevel, SKIP_ANSWER } from "@/lib/risk-levels";
+import { matchNumericLevel, SKIP_ANSWER } from "@/lib/risk-levels";
 
 interface PredictRequestBody {
   mode?: "quick" | "advanced";
@@ -93,17 +93,11 @@ export async function POST(request: Request) {
 
     // Every input_type except 'choice' resolves to a plain number by the
     // time it reaches here — 'number' and 'slider' answers directly, and
-    // 'height_weight' as the client-computed BMI value. Alcohol is asked in
-    // drinks/month but its bands are in drinks/week (see migration_005) —
-    // convert before matching, same conversion the client preview uses.
-    let numericAnswer = typeof answer === "number" ? answer : Number(answer);
-    if (riskFactorKey === "alcohol") {
-      numericAnswer = numericAnswer / ALCOHOL_WEEKS_PER_MONTH;
-    }
+    // 'height_weight' as the client-computed BMI value.
     const matched =
       riskFactor.inputType === "choice"
         ? candidateLevels.find((l) => l.levelKey === answer)
-        : matchNumericLevel(candidateLevels, numericAnswer);
+        : matchNumericLevel(candidateLevels, typeof answer === "number" ? answer : Number(answer));
     if (!matched) continue;
 
     factors.push({

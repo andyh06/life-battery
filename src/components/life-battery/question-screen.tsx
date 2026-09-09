@@ -18,7 +18,7 @@ import { Slider } from "@/components/ui/slider";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { RiskFactorLevelRow, Sex } from "@/lib/data";
 import { bmiFromImperial } from "@/lib/bmi";
-import { alcoholMonthlyToWeekly, matchNumericLevel, SKIP_ANSWER } from "@/lib/risk-levels";
+import { matchNumericLevel, SKIP_ANSWER } from "@/lib/risk-levels";
 import { HeightWeightInput } from "./height-weight-input";
 import type { Answers, QuestionStep, UnitSystem } from "./types";
 
@@ -28,6 +28,11 @@ const AGE_MAX = 100;
 /** The shadcn Slider wrapper's Value type isn't narrowed per-usage, so it stays a union even though we only ever pass single-thumb arrays. */
 function firstSliderValue(v: number | readonly number[]): number {
   return typeof v === "number" ? v : v[0];
+}
+
+/** "1 hours" reads wrong. Units are plural by convention in the DB (e.g. "hours"); singularize at exactly 1. */
+function pluralizeUnit(value: number, unit: string): string {
+  return Math.abs(value) === 1 && unit.endsWith("s") ? unit.slice(0, -1) : unit;
 }
 
 /** Small info icon that reveals `text` on hover AND keyboard focus (Base UI's Tooltip trigger handles both natively). */
@@ -207,14 +212,11 @@ export function QuestionScreen({
       const max = riskFactor.maxInput ?? 100;
       const step = riskFactor.step ?? 1;
       const value = typeof currentAnswer === "number" ? currentAnswer : (min + max) / 2;
-      // Alcohol is asked in drinks/month; its bands are in drinks/week.
-      const valueForMatching =
-        riskFactor.key === "alcohol" ? alcoholMonthlyToWeekly(value) : value;
-      const matched = matchNumericLevel(levels, valueForMatching);
+      const matched = matchNumericLevel(levels, value);
       body = (
         <div className="flex flex-col gap-3">
           <p className="text-2xl font-semibold">
-            {value} {riskFactor.unit}
+            {value} {riskFactor.unit ? pluralizeUnit(value, riskFactor.unit) : null}
           </p>
           <Slider
             value={[value]}
