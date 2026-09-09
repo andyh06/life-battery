@@ -1,5 +1,6 @@
 "use client";
 
+import { Info } from "lucide-react";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,9 +15,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Slider } from "@/components/ui/slider";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { RiskFactorLevelRow, Sex } from "@/lib/data";
 import { bmiFromImperial } from "@/lib/bmi";
-import { matchNumericLevel } from "@/lib/risk-levels";
+import { alcoholMonthlyToWeekly, matchNumericLevel, SKIP_ANSWER } from "@/lib/risk-levels";
 import { HeightWeightInput } from "./height-weight-input";
 import type { Answers, QuestionStep, UnitSystem } from "./types";
 
@@ -26,6 +28,26 @@ const AGE_MAX = 100;
 /** The shadcn Slider wrapper's Value type isn't narrowed per-usage, so it stays a union even though we only ever pass single-thumb arrays. */
 function firstSliderValue(v: number | readonly number[]): number {
   return typeof v === "number" ? v : v[0];
+}
+
+/** Small info icon that reveals `text` on hover AND keyboard focus (Base UI's Tooltip trigger handles both natively). */
+function InfoTooltip({ text }: { text: string }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <button
+            type="button"
+            className="inline-flex size-4 items-center justify-center rounded-full text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+            aria-label="More information"
+          >
+            <Info className="size-3.5" />
+          </button>
+        }
+      />
+      <TooltipContent>{text}</TooltipContent>
+    </Tooltip>
+  );
 }
 
 interface QuestionScreenProps {
@@ -73,6 +95,7 @@ export function QuestionScreen({
 }: QuestionScreenProps) {
   let question: string;
   let helpText: string | null = null;
+  let sensitiveNote: string | null = null;
   // Sliders and height/weight always have a value (there's no "empty"
   // position), so unlike choice/number questions, Next is enabled from the
   // moment the screen renders — the whole point is a live readout the user
@@ -82,16 +105,45 @@ export function QuestionScreen({
 
   if (step.kind === "age") {
     question = "How old are you?";
+    // Don't clamp on every keystroke — that fights the browser's own
+    // editing of the field (typing "45" one digit at a time briefly holds
+    // "4", clamping it to 18 mid-edit, then appending "5" onto "18"
+    // instead of "4"). Let the field hold whatever the user is typing and
+    // only gate proceeding on it being in range.
+    canProceed = age >= AGE_MIN && age <= AGE_MAX;
     body = (
       <div className="flex flex-col gap-3">
-        <p className="text-2xl font-semibold">{age} years</p>
-        <Slider
-          value={[age]}
-          min={AGE_MIN}
-          max={AGE_MAX}
-          step={1}
-          onValueChange={(v) => onAgeChange(firstSliderValue(v))}
-        />
+        <div className="flex items-center gap-3">
+          <Slider
+            className="flex-1"
+            value={[Math.min(AGE_MAX, Math.max(AGE_MIN, age))]}
+            min={AGE_MIN}
+            max={AGE_MAX}
+            step={1}
+            onValueChange={(v) => onAgeChange(firstSliderValue(v))}
+          />
+          <Input
+            type="number"
+            min={AGE_MIN}
+            max={AGE_MAX}
+            value={age}
+            onChange={(e) => {
+              const raw = e.target.value;
+              const parsed = Number(raw);
+              if (raw !== "" && Number.isFinite(parsed)) {
+                onAgeChange(parsed);
+              }
+            }}
+            className="w-20 text-center"
+          />
+        </div>
+        {!canProceed ? (
+          <p className="text-xs text-destructive">Age must be between 18 and 100.</p>
+        ) : null}
+        <p className="text-xs text-muted-foreground">
+          The risk estimates in this model come from adult cohort studies and do not apply to
+          anyone under 18.
+        </p>
       </div>
     );
   } else if (step.kind === "sex") {
@@ -115,6 +167,7 @@ export function QuestionScreen({
     const { riskFactor } = step;
     question = riskFactor.question;
     helpText = riskFactor.helpText;
+    sensitiveNote = riskFactor.sensitiveNote;
     const levels = allLevels
       .filter((l) => l.riskFactorKey === riskFactor.key)
       .filter((l) => l.appliesToSex === "all" || l.appliesToSex === sex)
@@ -129,14 +182,24 @@ export function QuestionScreen({
           onValueChange={(v) => onAnswerChange(riskFactor.key, v as string)}
         >
           {levels.map((level) => (
-            <div key={level.levelKey} className="flex items-center gap-3">
+            <div key={level.levelKey} className="flex items-center gap-2">
               <RadioGroupItem
                 value={level.levelKey}
                 id={`${riskFactor.key}-${level.levelKey}`}
               />
               <Label htmlFor={`${riskFactor.key}-${level.levelKey}`}>{level.label}</Label>
+              {level.description ? <InfoTooltip text={level.description} /> : null}
             </div>
           ))}
+          {/* Always last — never let "Prefer not to say" outrank a real option. */}
+          {riskFactor.optional ? (
+            <div className="flex items-center gap-2 border-t pt-2">
+              <RadioGroupItem value={SKIP_ANSWER} id={`${riskFactor.key}-skip`} />
+              <Label htmlFor={`${riskFactor.key}-skip`} className="text-muted-foreground">
+                Prefer not to say
+              </Label>
+            </div>
+          ) : null}
         </RadioGroup>
       );
     } else if (riskFactor.inputType === "slider") {
@@ -144,7 +207,10 @@ export function QuestionScreen({
       const max = riskFactor.maxInput ?? 100;
       const step = riskFactor.step ?? 1;
       const value = typeof currentAnswer === "number" ? currentAnswer : (min + max) / 2;
-      const matched = matchNumericLevel(levels, value);
+      // Alcohol is asked in drinks/month; its bands are in drinks/week.
+      const valueForMatching =
+        riskFactor.key === "alcohol" ? alcoholMonthlyToWeekly(value) : value;
+      const matched = matchNumericLevel(levels, valueForMatching);
       body = (
         <div className="flex flex-col gap-3">
           <p className="text-2xl font-semibold">
@@ -216,6 +282,11 @@ export function QuestionScreen({
         <CardDescription>
           Question {stepNumber} of {totalSteps}
         </CardDescription>
+        {sensitiveNote ? (
+          <p className="rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
+            {sensitiveNote}
+          </p>
+        ) : null}
         <CardTitle className="text-xl">{question}</CardTitle>
         {helpText ? <CardDescription>{helpText}</CardDescription> : null}
       </CardHeader>

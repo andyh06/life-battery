@@ -148,6 +148,11 @@ create table risk_factors (
   max_input  numeric,
   step       numeric,
   unit       text,
+  -- When true, the questionnaire renders a "Prefer not to say" option that
+  -- submits no answer for this factor, and shows sensitive_note above the
+  -- question.
+  optional        boolean not null default false,
+  sensitive_note  text,
   sort_order int default 0
 );
 
@@ -162,6 +167,9 @@ create table risk_factor_levels (
   applies_to_sex  text    not null default 'all' check (applies_to_sex in ('male','female','all')),
   min_value       numeric,
   max_value       numeric,
+  -- One-line explanation shown in a tooltip on hover/focus next to this
+  -- option, when present.
+  description     text,
   source_id       text references sources(id),
   citation_note   text,
   sort_order      int default 0,

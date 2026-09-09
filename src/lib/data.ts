@@ -33,6 +33,9 @@ export interface RiskFactorRow {
   maxInput: number | null;
   step: number | null;
   unit: string | null;
+  /** When true, the questionnaire offers "Prefer not to say" and shows sensitiveNote above the question. */
+  optional: boolean;
+  sensitiveNote: string | null;
   sortOrder: number;
 }
 
@@ -44,6 +47,8 @@ export interface RiskFactorLevelRow {
   appliesToSex: Sex | "all";
   minValue: number | null;
   maxValue: number | null;
+  /** One-line explanation shown in a tooltip next to this option, when present. */
+  description: string | null;
   sortOrder: number;
 }
 
@@ -118,7 +123,7 @@ export const getRiskFactors = unstable_cache(
     const { data, error } = await supabase
       .from("risk_factors")
       .select(
-        "key, label, question, help_text, category, tier, input_type, min_input, max_input, step, unit, sort_order"
+        "key, label, question, help_text, category, tier, input_type, min_input, max_input, step, unit, optional, sensitive_note, sort_order"
       )
       .order("sort_order", { ascending: true });
 
@@ -135,6 +140,8 @@ export const getRiskFactors = unstable_cache(
       maxInput: r.max_input,
       step: r.step,
       unit: r.unit,
+      optional: r.optional,
+      sensitiveNote: r.sensitive_note,
       sortOrder: r.sort_order,
     }));
   },
@@ -147,7 +154,7 @@ export const getRiskFactorLevels = unstable_cache(
     const { data, error } = await supabase
       .from("risk_factor_levels")
       .select(
-        "risk_factor_key, level_key, label, hazard_ratio, applies_to_sex, min_value, max_value, sort_order"
+        "risk_factor_key, level_key, label, hazard_ratio, applies_to_sex, min_value, max_value, description, sort_order"
       )
       .order("sort_order", { ascending: true });
 
@@ -160,6 +167,7 @@ export const getRiskFactorLevels = unstable_cache(
       appliesToSex: r.applies_to_sex,
       minValue: r.min_value,
       maxValue: r.max_value,
+      description: r.description,
       sortOrder: r.sort_order,
     }));
   },

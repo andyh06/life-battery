@@ -215,4 +215,36 @@ describe("predict", () => {
     expect(result.interventions).toHaveLength(1);
     expect(result.interventions[0].yearsGained).toBeGreaterThan(0);
   });
+
+  it("omitting a factor (e.g. 'Prefer not to say' on an optional question) keeps it out of H entirely", () => {
+    const withBadDiabetesAnswer = predict({
+      age: 40,
+      lifeTable,
+      factors: [referenceFactor("smoking", 2.8), referenceFactor("diabetes", 1.8)],
+      interventions: [],
+    });
+    const withDiabetesOmitted = predict({
+      age: 40,
+      lifeTable,
+      factors: [referenceFactor("smoking", 2.8)], // diabetes never in the array at all
+      interventions: [],
+    });
+    const withDiabetesExplicitlyAtReference = predict({
+      age: 40,
+      lifeTable,
+      factors: [referenceFactor("smoking", 2.8), referenceFactor("diabetes", 1, 1)],
+      interventions: [],
+    });
+
+    // An omitted factor must be indistinguishable from one answered at its
+    // own reference level — both leave the combined hazard unaffected.
+    expect(withDiabetesOmitted.adjustedEx).toBeCloseTo(
+      withDiabetesExplicitlyAtReference.adjustedEx,
+      6
+    );
+    // And it must differ from actually applying the bad answer's hazard
+    // ratio, proving 1.8 never entered the product when the factor is
+    // simply absent from `factors`.
+    expect(withDiabetesOmitted.adjustedEx).toBeGreaterThan(withBadDiabetesAnswer.adjustedEx);
+  });
 });

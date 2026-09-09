@@ -8,7 +8,7 @@ import {
   type RiskFactorLevelRow,
   type Sex,
 } from "@/lib/data";
-import { matchNumericLevel } from "@/lib/risk-levels";
+import { ALCOHOL_WEEKS_PER_MONTH, matchNumericLevel, SKIP_ANSWER } from "@/lib/risk-levels";
 
 interface PredictRequestBody {
   mode?: "quick" | "advanced";
@@ -78,6 +78,13 @@ export async function POST(request: Request) {
   // the resolved numbers.
   const factors: AnsweredFactor[] = [];
   for (const [riskFactorKey, answer] of Object.entries(answers)) {
+    // "Prefer not to say" on an optional factor: explicitly omit it from
+    // the model, same as if the key were never in `answers` at all.
+    // predict.ts already treats a missing factor as no effect on H — see
+    // predict.test.ts "omitting a factor has the same effect as never
+    // answering it".
+    if (answer === SKIP_ANSWER) continue;
+
     const riskFactor = riskFactorByKey.get(riskFactorKey);
     const candidateLevels = levelsByFactor.get(riskFactorKey);
     if (!riskFactor || !candidateLevels || candidateLevels.length === 0) continue;
@@ -86,11 +93,17 @@ export async function POST(request: Request) {
 
     // Every input_type except 'choice' resolves to a plain number by the
     // time it reaches here — 'number' and 'slider' answers directly, and
-    // 'height_weight' as the client-computed BMI value.
+    // 'height_weight' as the client-computed BMI value. Alcohol is asked in
+    // drinks/month but its bands are in drinks/week (see migration_005) —
+    // convert before matching, same conversion the client preview uses.
+    let numericAnswer = typeof answer === "number" ? answer : Number(answer);
+    if (riskFactorKey === "alcohol") {
+      numericAnswer = numericAnswer / ALCOHOL_WEEKS_PER_MONTH;
+    }
     const matched =
       riskFactor.inputType === "choice"
         ? candidateLevels.find((l) => l.levelKey === answer)
-        : matchNumericLevel(candidateLevels, typeof answer === "number" ? answer : Number(answer));
+        : matchNumericLevel(candidateLevels, numericAnswer);
     if (!matched) continue;
 
     factors.push({

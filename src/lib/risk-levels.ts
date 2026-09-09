@@ -28,3 +28,27 @@ export function matchNumericLevel(
   if (match) return match;
   return value < (sorted[0].minValue ?? -Infinity) ? sorted[0] : sorted[sorted.length - 1];
 }
+
+/**
+ * Sentinel value for a "Prefer not to say" choice on an optional risk
+ * factor. It deliberately never matches a real level_key, so
+ * matchNumericLevel/choice lookups both fail to resolve it and the caller's
+ * existing "no match -> omit this factor" path handles it — no answer is
+ * added to `factors`, so it never enters H. Exported (rather than left
+ * implicit) so the skip is an explicit, documented behavior, not an
+ * incidental side effect of an unmatched string.
+ */
+export const SKIP_ANSWER = "__prefer_not_to_say__";
+
+/**
+ * The alcohol question asks in drinks/month (0-120) so "I drink once a
+ * month or less" has somewhere to go, but risk_factor_levels bounds for
+ * alcohol are still in drinks/WEEK (unchanged, see migration_005). Convert
+ * before band-matching, in both the live client preview and the server
+ * route, so predict.ts and the existing bands stay untouched.
+ */
+export const ALCOHOL_WEEKS_PER_MONTH = 4.345;
+
+export function alcoholMonthlyToWeekly(drinksPerMonth: number): number {
+  return drinksPerMonth / ALCOHOL_WEEKS_PER_MONTH;
+}

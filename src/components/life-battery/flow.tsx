@@ -49,6 +49,10 @@ export function LifeBatteryFlow({ states, riskFactors, riskFactorLevels }: LifeB
     (s) => s.kind === "risk-factor" && s.riskFactor.inputType === "height_weight"
   );
 
+  // 2 fixed steps (age, sex) + however many risk_factors rows carry that tier.
+  const quickCount = 2 + riskFactors.filter((rf) => rf.tier === "quick").length;
+  const advancedCount = 2 + riskFactors.filter((rf) => rf.tier === "advanced").length;
+
   function handleAnswerChange(riskFactorKey: string, value: string | number) {
     setAnswers((prev) => ({ ...prev, [riskFactorKey]: value }));
   }
@@ -70,13 +74,25 @@ export function LifeBatteryFlow({ states, riskFactors, riskFactorLevels }: LifeB
   async function submit() {
     setStage("submitting");
     setErrorMessage(null);
-    // The computed BMI never lives in `answers` during the flow (there's
-    // nowhere for a live height/weight sub-form to put it that survives
-    // Back navigation cleanly) — it's derived once, here, only when the
-    // height_weight step was actually part of this tier's question set.
-    const finalAnswers: Answers = hasHeightWeightStep
-      ? { ...answers, bmi: bmiFromImperial(heightInches, weightLb) }
-      : answers;
+    // Sliders always show a value and never block Next (there's no "empty"
+    // position), so a factor the user never actually dragged would
+    // otherwise be silently missing from `answers` — indistinguishable
+    // from an intentional skip. Backfill any untouched slider with the
+    // same midpoint value it was displaying. The computed BMI has the same
+    // problem plus nowhere to live in `answers` during the flow (no spot
+    // for a live height/weight sub-form that survives Back navigation
+    // cleanly), so it's derived fresh here too.
+    const finalAnswers: Answers = { ...answers };
+    for (const step of steps) {
+      if (step.kind !== "risk-factor") continue;
+      const rf = step.riskFactor;
+      if (rf.inputType === "slider" && finalAnswers[rf.key] === undefined) {
+        finalAnswers[rf.key] = ((rf.minInput ?? 0) + (rf.maxInput ?? 100)) / 2;
+      }
+    }
+    if (hasHeightWeightStep) {
+      finalAnswers.bmi = bmiFromImperial(heightInches, weightLb);
+    }
     try {
       const response = await fetch("/api/predict", {
         method: "POST",
@@ -121,7 +137,13 @@ export function LifeBatteryFlow({ states, riskFactors, riskFactorLevels }: LifeB
   return (
     <div className="flex flex-1 items-center justify-center p-4">
       {stage === "landing" ? (
-        <LandingScreen tier={tier} onTierChange={setTier} onBegin={() => setStage("select-state")} />
+        <LandingScreen
+          tier={tier}
+          quickCount={quickCount}
+          advancedCount={advancedCount}
+          onTierChange={setTier}
+          onBegin={() => setStage("select-state")}
+        />
       ) : null}
 
       {stage === "select-state" ? (
