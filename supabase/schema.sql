@@ -140,7 +140,14 @@ create table risk_factors (
   help_text  text,
   category   text check (category in ('body','habits','environment','socioeconomic','clinical')),
   tier       text not null check (tier in ('quick','advanced')),
-  input_type text not null check (input_type in ('choice','number')),
+  input_type text not null check (input_type in ('choice','number','slider','height_weight')),
+  -- Only meaningful for input_type = 'slider': the range, granularity, and
+  -- display unit for the shadcn Slider. Unused (null) for 'choice',
+  -- 'number', and 'height_weight' (the last computes its own BMI value).
+  min_input  numeric,
+  max_input  numeric,
+  step       numeric,
+  unit       text,
   sort_order int default 0
 );
 
