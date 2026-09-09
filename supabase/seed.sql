@@ -15,7 +15,8 @@ insert into sources (id, name, publisher, url, year, notes) values
   ('chetty_2016', 'The Association Between Income and Life Expectancy in the US', 'JAMA', 'https://jamanetwork.com/journals/jama/fullarticle/2513561', 2016, 'Chetty et al. Income percentile and life expectancy, 1.4 billion tax records.'),
   ('sofi_2010', 'Mediterranean diet adherence and health status', 'BMJ / Am J Clin Nutr', 'https://pubmed.ncbi.nlm.nih.gov/20810976/', 2010, 'Sofi et al. Meta-analysis of adherence score and all-cause mortality.'),
   ('epa_aqs', 'Air Quality System — annual PM2.5 by state', 'U.S. Environmental Protection Agency', 'https://www.epa.gov/outdoor-air-quality-data', 2023, 'Annual mean fine particulate concentration, state means of 24-hour monitor readings.'),
-  ('epa_sdwis', 'Safe Drinking Water Information System (via Envirofacts)', 'U.S. Environmental Protection Agency', 'https://enviro.epa.gov/enviro/ef_metadata_html.ef_metadata_table?p_table_name=VIOLATION&p_topic=SDWIS', null, 'Live snapshot: people served by a system with an unresolved health-based violation, by state.'),
+  ('epa_sdwis', 'Safe Drinking Water Information System (via Envirofacts)', 'U.S. Environmental Protection Agency', 'https://enviro.epa.gov/enviro/ef_metadata_html.ef_metadata_table?p_table_name=VIOLATION&p_topic=SDWIS', null, 'Live snapshot: rate per 100k people served by a system with an unresolved health-based violation, by state. Normalized against census_pep_2024.'),
+  ('census_pep_2024', 'Population Estimates Program, Vintage 2024', 'U.S. Census Bureau', 'https://www2.census.gov/programs-surveys/popest/datasets/2020-2024/state/totals/NST-EST2024-ALLDATA.csv', 2024, 'State population totals, used as the denominator for per-100k indicators.'),
   ('nchs_leading_causes', 'NCHS Leading Causes of Death, 1999-2017', 'CDC / National Center for Health Statistics', 'https://data.cdc.gov/NCHS/NCHS-Leading-Causes-of-Death-United-States/bi63-dtpu', 2017, 'Deaths and age-adjusted death rate by state and cause.'),
   ('chr_2024', 'County Health Rankings & Roadmaps, 2024', 'University of Wisconsin Population Health Institute / Robert Wood Johnson Foundation', 'https://www.countyhealthrankings.org/health-data', 2024, 'County-level behavioral, environmental, and socioeconomic measures.');
 
@@ -471,7 +472,7 @@ insert into state_life_expectancy (state_fips, sex, life_expectancy, year, sourc
 
 insert into indicators (key, label, unit, description, higher_is_worse, source_id) values
   ('pm25_annual','Fine particulate matter (PM2.5)','µg/m³','Annual mean concentration of PM2.5, state means of monitor readings.',true,'epa_aqs'),
-  ('water_violations','Drinking water violations','people affected','People currently served by a public water system with an unresolved health-based violation.',true,'epa_sdwis'),
+  ('water_violations','Drinking water violations','per 100k people','Rate per 100,000 people currently served by a public water system with an unresolved health-based violation.',true,'epa_sdwis'),
   ('adult_smoking','Adult smoking','% of adults','Share of adults who are current smokers.',true,'chr_2024'),
   ('adult_obesity','Adult obesity','% of adults','Share of adults with BMI >= 30.',true,'chr_2024'),
   ('physical_inactivity','Physical inactivity','% of adults','Share of adults reporting no leisure-time physical activity.',true,'chr_2024'),

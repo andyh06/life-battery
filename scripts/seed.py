@@ -319,21 +319,34 @@ def load_epa_water():
     query needs no join and no bulk download:
     https://enviro.epa.gov/enviro/ef_metadata_html.ef_metadata_table?p_table_name=VIOLATION&p_topic=SDWIS
 
-    Fills state_indicators.water_violations = number of people currently
-    served by a public water system with an unresolved health-based
-    violation (COMPLIANCE_STATUS_CODE 'K' or 'O' <=> RTC_DATE is null, i.e.
-    not yet returned to compliance — confirmed by sampling), deduplicated by
-    PWSID so a system with several concurrent violations counts once.
+    Fills state_indicators.water_violations = rate per 100,000 people of the
+    number currently served by a public water system with an unresolved
+    health-based violation (COMPLIANCE_STATUS_CODE 'K' or 'O' <=> RTC_DATE is
+    null, i.e. not yet returned to compliance — confirmed by sampling),
+    deduplicated by PWSID so a system with several concurrent violations
+    counts once, normalized against each state's total population.
 
-    This is a live snapshot (not a fixed reporting year), and it is a count
-    of people affected, not "per 100k" — SDWIS doesn't carry total state
-    population, and no population dataset is loaded elsewhere in this schema
-    to normalize against without inventing a second data source.
+    Population comes from the Census Bureau's Population Estimates Program
+    (Vintage 2024). The REST API at api.census.gov now requires a signed-up
+    key (redirects to a "Missing Key" page without one); this instead uses
+    the same data published as a plain, no-key-required CSV:
+    https://www2.census.gov/programs-surveys/popest/datasets/2020-2024/state/totals/NST-EST2024-ALLDATA.csv
+
+    This is a live snapshot (not a fixed reporting year) for the violation
+    count; the population denominator is the 2024 vintage estimate.
     """
     EF = "https://data.epa.gov/efservice"
+    POP_URL = ("https://www2.census.gov/programs-surveys/popest/datasets/"
+               "2020-2024/state/totals/NST-EST2024-ALLDATA.csv")
     SNAPSHOT_YEAR = 2026
-    print("epa_water: querying EPA Envirofacts SDWIS (VIOLATION table) per state...")
 
+    print("epa_water: downloading Census state population estimates...")
+    pop_df = pd.read_csv(io.BytesIO(fetch(POP_URL).content))
+    pop_df = pop_df[pop_df["SUMLEV"] == 40]  # state-level rows only
+    population = {f'{int(r["STATE"]):02d}': int(r["POPESTIMATE2024"])
+                  for _, r in pop_df.iterrows()}
+
+    print("epa_water: querying EPA Envirofacts SDWIS (VIOLATION table) per state...")
     rows = []
     for i, (postal, name) in enumerate(POSTAL_STATE_NAMES.items(), 1):
         fips = STATE_FIPS[name]
@@ -343,10 +356,12 @@ def load_epa_water():
                    f"/IS_HEALTH_BASED_IND/Y/COMPLIANCE_STATUS_CODE/{code}/JSON")
             for r in fetch(url).json():
                 systems[r["pwsid"]] = r.get("population_served_count") or 0
+        affected = sum(systems.values())
+        state_pop = population.get(fips)
         rows.append({
             "state_fips": fips,
             "indicator_key": "water_violations",
-            "value": sum(systems.values()),
+            "value": round(affected / state_pop * 100_000, 1) if state_pop else None,
             "year": SNAPSHOT_YEAR,
         })
         print(f"  {i}/{len(POSTAL_STATE_NAMES)} states queried", end="\r")
