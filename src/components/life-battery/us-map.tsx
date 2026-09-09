@@ -8,14 +8,18 @@ import { animate, motion, useReducedMotion } from "motion/react";
 import usStatesTopology from "us-atlas/states-10m.json";
 import type { StateRow } from "@/lib/data";
 
-/** Delay between each state's entrance so the map assembles rather than appears at once. */
-const STAGGER_MS = 8;
+/** Delay between each state's entrance so the map sweeps in west-to-east rather than appearing at once. */
+const STAGGER_MS = 12;
+/** Entrance + pulse settle window per state, used to size the global "settled" timeout below. */
+const ENTRANCE_SETTLE_MS = 650;
 
 const WIDTH = 960;
 const HEIGHT = 600;
 /** Extra room around a clicked state so it doesn't zoom in flush to its own edges. */
 const ZOOM_PADDING = 0.3;
-const ZOOM_DURATION_S = 0.7;
+const ZOOM_DURATION_S = 0.9;
+/** Strong deceleration ("flying in to a stop") rather than the milder ease-out used elsewhere. */
+const ZOOM_EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
 type ViewBox = [number, number, number, number];
 type Bounds = [[number, number], [number, number]];
@@ -47,7 +51,7 @@ export function UsMap({ states, onSelect }: UsMapProps) {
   const knownFips = useMemo(() => new Set(states.map((s) => s.fips)), [states]);
   const nameByFips = useMemo(() => new Map(states.map((s) => [s.fips, s.name])), [states]);
 
-  const { pathFor, boundsFor, initialViewBox } = useMemo(() => {
+  const { pathFor, boundsFor, initialViewBox, rankByFips } = useMemo(() => {
     const topology = usStatesTopology as unknown as Topology;
     const geometries = topology.objects.states as GeometryCollection;
     const collection = feature(topology, geometries);
@@ -59,15 +63,27 @@ export function UsMap({ states, onSelect }: UsMapProps) {
 
     const pathFor = new Map<string, string>();
     const boundsFor = new Map<string, Bounds>();
+    const centroidXFor = new Map<string, number>();
     for (const f of relevant) {
       const id = String(f.id);
       pathFor.set(id, pathGenerator(f) ?? "");
       boundsFor.set(id, pathGenerator.bounds(f));
+      // AlbersUSA keeps the projected x-axis west-to-east (Alaska/Hawaii
+      // insets included, wherever they land), so this doubles as a visual
+      // "sweeps across the map" order without needing unprojected lon/lat.
+      centroidXFor.set(id, pathGenerator.centroid(f)[0]);
     }
+
+    const rankByFips = new Map(
+      [...centroidXFor.entries()]
+        .sort((a, b) => a[1] - b[1])
+        .map(([id], rank) => [id, rank])
+    );
 
     return {
       pathFor,
       boundsFor,
+      rankByFips,
       initialViewBox: boundsToViewBox(pathGenerator.bounds(relevantCollection)),
     };
   }, [knownFips]);
@@ -84,7 +100,7 @@ export function UsMap({ states, onSelect }: UsMapProps) {
   useEffect(() => {
     const timer = setTimeout(
       () => setSettled(true),
-      states.length * STAGGER_MS + 400
+      states.length * STAGGER_MS + ENTRANCE_SETTLE_MS
     );
     return () => clearTimeout(timer);
   }, [states.length]);
@@ -117,7 +133,7 @@ export function UsMap({ states, onSelect }: UsMapProps) {
     const from = viewBox;
     animate(0, 1, {
       duration: ZOOM_DURATION_S,
-      ease: [0.22, 1, 0.36, 1],
+      ease: ZOOM_EASE,
       onUpdate: (t) => {
         setViewBox([
           from[0] + (target[0] - from[0]) * t,
@@ -142,6 +158,7 @@ export function UsMap({ states, onSelect }: UsMapProps) {
           {states.map((state, index) => {
             const d = pathFor.get(state.fips);
             if (!d) return null;
+            const rank = rankByFips.get(state.fips) ?? index;
             const isHovered = hoveredFips === state.fips;
             const isSelected = selectedFips === state.fips;
             const isLifted = isHovered && !selectedFips;
@@ -149,6 +166,11 @@ export function UsMap({ states, onSelect }: UsMapProps) {
             // selected, everything but the selection dims regardless of hover.
             const isDimmed = selectedFips !== null ? !isSelected : hoveredFips !== null && !isHovered;
             const ambient = !prefersReducedMotion && settled && !isLifted;
+            const targetOpacity = isDimmed ? 0.4 : 1;
+            const fill = isHovered || isSelected ? "var(--brand)" : "var(--surface-2)";
+            const strokeColor = isSelected ? "var(--danger)" : "var(--brand)";
+            const strokeOpacity = isHovered || isSelected ? 1 : 0.25;
+            const entranceDelay = rank * (STAGGER_MS / 1000);
             return (
               <motion.path
                 key={state.fips}
@@ -166,21 +188,42 @@ export function UsMap({ states, onSelect }: UsMapProps) {
                 onPointerEnter={() => !selectedFips && setHoveredFips(state.fips)}
                 onPointerLeave={() => setHoveredFips((prev) => (prev === state.fips ? null : prev))}
                 onPointerMove={handlePointerMove}
-                className="cursor-pointer outline-none transition-[fill] duration-150 focus-visible:stroke-ring focus-visible:stroke-2"
+                className="cursor-pointer outline-none focus-visible:stroke-ring focus-visible:stroke-2"
                 style={{
-                  fill: isHovered || isSelected ? "var(--brand)" : "var(--secondary)",
-                  stroke: "var(--background)",
                   strokeWidth: 1,
                   transformBox: "fill-box",
                   transformOrigin: "center",
                 }}
-                initial={prefersReducedMotion ? false : { opacity: 0, y: 6 }}
+                initial={
+                  prefersReducedMotion
+                    ? false
+                    : { opacity: 0, scale: 0.9, stroke: "var(--brand)", strokeOpacity: 0.25 }
+                }
                 animate={
                   isLifted
-                    ? { y: -3, scale: 1.04, opacity: isDimmed ? 0.35 : 1 }
+                    ? { y: -3, scale: 1.04, opacity: targetOpacity, fill, stroke: strokeColor, strokeOpacity }
                     : ambient
-                      ? { y: [0, -1.2, 0], scale: 1, opacity: isDimmed ? 0.35 : 1 }
-                      : { y: 0, scale: 1, opacity: isDimmed ? 0.35 : 1 }
+                      ? {
+                          y: [0, -1.2, 0],
+                          scale: 1,
+                          opacity: targetOpacity,
+                          fill,
+                          stroke: strokeColor,
+                          strokeOpacity,
+                        }
+                      : {
+                          y: 0,
+                          scale: 1,
+                          opacity: targetOpacity,
+                          // A brief flash of full brand yellow before settling to
+                          // the resting fill — staggered by entranceDelay, this
+                          // is the "highlight pulse" that sweeps across the map
+                          // as each state pops in. Only plays pre-settle; once
+                          // settled it's just the plain resting/hover fill.
+                          fill: settled ? fill : ["var(--brand)", fill],
+                          stroke: strokeColor,
+                          strokeOpacity,
+                        }
                 }
                 transition={
                   isLifted
@@ -195,7 +238,15 @@ export function UsMap({ states, onSelect }: UsMapProps) {
                           },
                           scale: { duration: 0.25 },
                         }
-                      : { duration: 0.35, delay: index * (STAGGER_MS / 1000), ease: "easeOut" }
+                      : {
+                          default: {
+                            type: "spring",
+                            stiffness: 260,
+                            damping: 20,
+                            delay: entranceDelay,
+                          },
+                          fill: { duration: 0.6, delay: entranceDelay, ease: "easeOut" },
+                        }
                 }
               />
             );
