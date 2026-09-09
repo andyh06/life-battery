@@ -41,28 +41,28 @@ export function matchNumericLevel(
 export const SKIP_ANSWER = "__prefer_not_to_say__";
 
 /**
- * Normalizes a choice answer's hazard ratio to 0-1 within its own factor's
- * levels, for the reactive illustrations — hazard ratio (not sortOrder or
- * display order) is what actually tracks "worse," and it isn't always
- * monotonic with either (e.g. alcohol's lowest hazard is "light," not
- * "none"). Unanswered defaults to 0 (the least-severe visual state) rather
- * than guessing which level is "current."
+ * Normalizes a choice answer to 0-1 by its rank among its own factor's
+ * levels, for the reactive illustrations — ranked by sort_order (the
+ * authored dose/intensity order), not hazard ratio. Hazard ratio isn't
+ * always monotonic with dose (alcohol's lowest hazard is "light," not
+ * "none," from sick-quitter bias in the reference group), which previously
+ * made "I don't drink" render as *more* severe than "a few times a year."
+ * The illustrations are showing how much of the behavior someone reported,
+ * not how epidemiologically risky it is, so rank order is the right axis.
+ * Unanswered defaults to 0 (the least-severe visual state) rather than
+ * guessing which level is "current."
  */
-export function severityFromHazard(
+export function severityFromSortOrder(
   levels: RiskFactorLevelRow[],
   riskFactorKey: string,
   sex: Sex | null,
   levelKey: string | number | undefined
 ): number {
-  const factorLevels = levels.filter(
-    (l) => l.riskFactorKey === riskFactorKey && (l.appliesToSex === "all" || l.appliesToSex === sex)
-  );
-  if (factorLevels.length === 0 || typeof levelKey !== "string") return 0;
-  const hazards = factorLevels.map((l) => l.hazardRatio);
-  const min = Math.min(...hazards);
-  const max = Math.max(...hazards);
-  if (max === min) return 0;
-  const current = factorLevels.find((l) => l.levelKey === levelKey);
-  if (!current) return 0;
-  return (current.hazardRatio - min) / (max - min);
+  const factorLevels = levels
+    .filter((l) => l.riskFactorKey === riskFactorKey && (l.appliesToSex === "all" || l.appliesToSex === sex))
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+  if (factorLevels.length <= 1 || typeof levelKey !== "string") return 0;
+  const index = factorLevels.findIndex((l) => l.levelKey === levelKey);
+  if (index === -1) return 0;
+  return index / (factorLevels.length - 1);
 }

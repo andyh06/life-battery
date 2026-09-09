@@ -1,12 +1,42 @@
 "use client";
 
-import { Figure } from "./figure";
+import { MapPin } from "lucide-react";
+import { motion } from "motion/react";
 
-const MIN_AGE = 18;
-const MAX_AGE = 90;
+const spring = { type: "spring" as const, stiffness: 140, damping: 20 };
 
-/** Upright and lean at 20, gradually stooped by 90 — same spine-bend primitive as activity/sedentary. */
+const MIN_AGE = 20;
+const MAX_AGE = 100;
+const DECADE_MARKS = [20, 30, 40, 50, 60, 70, 80, 90, 100];
+
+/** A row of decade marks — filled ones are lived — with a marker sliding to your position. No morphing body. */
 export function AgeIllustration({ age }: { age: number }) {
-  const slump = (age - MIN_AGE) / (MAX_AGE - MIN_AGE);
-  return <Figure slump={slump} className="h-24 w-24" />;
+  const a = Math.min(MAX_AGE, Math.max(MIN_AGE, age));
+  const fraction = (a - MIN_AGE) / (MAX_AGE - MIN_AGE);
+
+  return (
+    <div className="flex h-24 w-24 flex-col items-center justify-center gap-3">
+      <div className="relative h-7 w-full">
+        <motion.div
+          className="absolute top-0"
+          initial={false}
+          animate={{ left: `${fraction * 100}%` }}
+          transition={spring}
+          style={{ translateX: "-50%" }}
+        >
+          <MapPin className="size-7 text-brand" strokeWidth={2.25} />
+        </motion.div>
+      </div>
+      <div className="flex w-full items-center justify-between">
+        {DECADE_MARKS.map((m) => (
+          <span
+            key={m}
+            className={`block size-2.5 rounded-full transition-colors duration-300 ${
+              m <= a ? "bg-brand" : "bg-surface-2"
+            }`}
+          />
+        ))}
+      </div>
+    </div>
+  );
 }

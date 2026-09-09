@@ -18,7 +18,9 @@ import { Slider } from "@/components/ui/slider";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { RiskFactorLevelRow, Sex } from "@/lib/data";
 import { bmiFromImperial } from "@/lib/bmi";
-import { matchNumericLevel, severityFromHazard, SKIP_ANSWER } from "@/lib/risk-levels";
+import { computeExerciseMinutesPerWeek, type ExerciseIntensity } from "@/lib/exercise";
+import { matchNumericLevel, severityFromSortOrder, SKIP_ANSWER } from "@/lib/risk-levels";
+import { ExerciseInput } from "./exercise-input";
 import { HeightWeightInput } from "./height-weight-input";
 import { AgeIllustration } from "./illustrations/age-illustration";
 import { ActivityIllustration } from "./illustrations/activity-illustration";
@@ -75,12 +77,18 @@ interface QuestionScreenProps {
   heightWeightUnit: UnitSystem;
   heightInches: number;
   weightLb: number;
+  exerciseDaysPerWeek: number;
+  exerciseMinutesPerSession: number;
+  exerciseIntensity: ExerciseIntensity;
   onAgeChange: (age: number) => void;
   onSexChange: (sex: Sex) => void;
   onAnswerChange: (riskFactorKey: string, value: string | number) => void;
   onHeightWeightUnitChange: (unit: UnitSystem) => void;
   onHeightInchesChange: (inches: number) => void;
   onWeightLbChange: (lb: number) => void;
+  onExerciseDaysPerWeekChange: (days: number) => void;
+  onExerciseMinutesPerSessionChange: (minutes: number) => void;
+  onExerciseIntensityChange: (intensity: ExerciseIntensity) => void;
   onBack: () => void;
   onNext: () => void;
   isLast: boolean;
@@ -97,12 +105,18 @@ export function QuestionScreen({
   heightWeightUnit,
   heightInches,
   weightLb,
+  exerciseDaysPerWeek,
+  exerciseMinutesPerSession,
+  exerciseIntensity,
   onAgeChange,
   onSexChange,
   onAnswerChange,
   onHeightWeightUnitChange,
   onHeightInchesChange,
   onWeightLbChange,
+  onExerciseDaysPerWeekChange,
+  onExerciseMinutesPerSessionChange,
+  onExerciseIntensityChange,
   onBack,
   onNext,
   isLast,
@@ -192,7 +206,7 @@ export function QuestionScreen({
 
     if (riskFactor.inputType === "choice") {
       canProceed = currentAnswer !== undefined;
-      const severity = severityFromHazard(allLevels, riskFactor.key, sex, currentAnswer);
+      const severity = severityFromSortOrder(allLevels, riskFactor.key, sex, currentAnswer);
       if (riskFactor.key === "smoking") illustration = <SmokingIllustration severity={severity} />;
       else if (riskFactor.key === "alcohol") illustration = <AlcoholIllustration severity={severity} />;
       else if (riskFactor.key === "social") illustration = <SocialIllustration severity={severity} />;
@@ -223,6 +237,28 @@ export function QuestionScreen({
           ) : null}
         </RadioGroup>
       );
+    } else if (riskFactor.inputType === "slider" && riskFactor.key === "activity") {
+      // Asked as days/week x minutes/session x intensity rather than one
+      // abstract slider — see src/lib/exercise.ts. The computed total is
+      // what actually gets stored (in finalAnswers, at submit time — see
+      // flow.tsx), so this branch never calls onAnswerChange itself.
+      const totalMinutes = computeExerciseMinutesPerWeek(
+        exerciseDaysPerWeek,
+        exerciseMinutesPerSession,
+        exerciseIntensity
+      );
+      illustration = <ActivityIllustration minutesPerWeek={totalMinutes} />;
+      body = (
+        <ExerciseInput
+          daysPerWeek={exerciseDaysPerWeek}
+          minutesPerSession={exerciseMinutesPerSession}
+          intensity={exerciseIntensity}
+          levels={levels}
+          onDaysPerWeekChange={onExerciseDaysPerWeekChange}
+          onMinutesPerSessionChange={onExerciseMinutesPerSessionChange}
+          onIntensityChange={onExerciseIntensityChange}
+        />
+      );
     } else if (riskFactor.inputType === "slider") {
       const min = riskFactor.minInput ?? 0;
       const max = riskFactor.maxInput ?? 100;
@@ -230,7 +266,6 @@ export function QuestionScreen({
       const value = typeof currentAnswer === "number" ? currentAnswer : (min + max) / 2;
       const matched = matchNumericLevel(levels, value);
       if (riskFactor.key === "sleep") illustration = <SleepIllustration hours={value} />;
-      else if (riskFactor.key === "activity") illustration = <ActivityIllustration minutesPerWeek={value} />;
       else if (riskFactor.key === "sedentary") illustration = <SedentaryIllustration hours={value} />;
       body = (
         <div className="flex flex-col gap-3">

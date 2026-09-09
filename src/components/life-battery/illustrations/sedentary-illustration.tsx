@@ -1,18 +1,28 @@
 "use client";
 
-import { Figure } from "./figure";
+import { Armchair } from "lucide-react";
+import { motion } from "motion/react";
 
+const spring = { type: "spring" as const, stiffness: 130, damping: 16 };
 const MAX_HOURS = 16;
 
-/** A chair plus the shared spine-bend figure — slump deepens as sitting hours rise. */
+/** The armchair grows and the ground it sits on tilts further as sitting hours rise — dominating the frame at the high end. */
 export function SedentaryIllustration({ hours }: { hours: number }) {
-  const slump = Math.min(1, Math.max(0, hours / MAX_HOURS));
+  const s = Math.min(1, Math.max(0, hours / MAX_HOURS));
+  const scale = 0.75 + s * 0.85;
+  const tilt = s * 10;
+
   return (
-    <div className="relative h-24 w-24">
-      <svg viewBox="0 0 48 48" className="absolute inset-0 h-full w-full" fill="none">
-        <path d="M14 30V44M34 30V44M14 44H34M14 30H34" stroke="var(--surface-2)" strokeWidth={3} strokeLinecap="round" />
-      </svg>
-      <Figure slump={slump} className="absolute inset-0 h-full w-full" />
+    <div className="relative flex h-24 w-24 items-center justify-center overflow-hidden">
+      <motion.div
+        className="absolute inset-x-3 bottom-7 h-1 rounded-full bg-surface-2"
+        initial={false}
+        animate={{ rotate: tilt }}
+        transition={spring}
+      />
+      <motion.div initial={false} animate={{ scale }} transition={spring}>
+        <Armchair className="size-12 text-brand" strokeWidth={2} />
+      </motion.div>
     </div>
   );
 }

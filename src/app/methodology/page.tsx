@@ -91,6 +91,14 @@ export default async function MethodologyPage() {
             below.
           </li>
           <li className="border-l-2 border-brand pl-4">
+            The exercise question weights vigorous activity at double moderate activity when
+            computing your minutes/week — that part is the standard guideline equivalence (150
+            min/week moderate = 75 min/week vigorous). The 0.5x weight given to{" "}
+            <strong className="text-foreground">light</strong> activity is not from a guideline —
+            it&apos;s our own assumption. The official guidelines don&apos;t count light activity
+            toward the target at all.
+          </li>
+          <li className="border-l-2 border-brand pl-4">
             Multiplying hazard ratios from <strong className="text-foreground">different</strong>{" "}
             studies, each with its own covariate adjustments and reference population, overstates the
             effect of combining those factors — a properly fitted model would estimate all of them

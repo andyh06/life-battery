@@ -1,41 +1,43 @@
 "use client";
 
+import { Car } from "lucide-react";
 import { motion } from "motion/react";
 
-const spring = { type: "spring" as const, stiffness: 110, damping: 20 };
+const spring = { type: "spring" as const, stiffness: 110, damping: 18 };
 
-/** severity: 0 (under 5,000 mi) to 1 (over 15,000 mi) — the road stretches further into the distance and gains more dashes. */
+const BOX = 96;
+const PAD = 12;
+const MAX_ROAD = BOX - PAD * 2;
+const ROAD_Y = 62;
+
+/** severity: 0 (under 5,000 mi) to 1 (over 15,000 mi) — the car drives further down a growing road as annual mileage rises. */
 export function DrivingIllustration({ severity }: { severity: number }) {
   const s = Math.min(1, Math.max(0, severity));
-  const vanishX = 24 + s * 6; // road narrows toward a vanishing point further away as distance grows
-  const dashCount = 2 + Math.round(s * 4);
+  const roadWidth = 16 + s * (MAX_ROAD - 16);
 
   return (
-    <svg viewBox="0 0 48 32" className="h-24 w-24" fill="none">
-      <motion.path
-        stroke="var(--surface-2)"
-        strokeWidth={0}
-        fill="var(--surface-2)"
+    <div className="relative h-24 w-24">
+      {/* Full-range guide, faint — shows how much further the road could go. */}
+      <div
+        className="absolute h-0.5 border-b-2 border-dashed border-surface-2"
+        style={{ left: PAD, top: ROAD_Y, width: MAX_ROAD }}
+      />
+      <motion.div
+        className="absolute h-1 rounded-full bg-brand"
+        style={{ left: PAD, top: ROAD_Y }}
         initial={false}
-        animate={{ d: `M4 30 L${vanishX - 2} 6 L${vanishX + 2} 6 L44 30 Z` }}
+        animate={{ width: roadWidth }}
         transition={spring}
       />
-      {Array.from({ length: dashCount }, (_, i) => {
-        const t = (i + 0.5) / dashCount;
-        const y = 30 - t * 22;
-        const width = 2.5 - t * 2;
-        return (
-          <motion.rect
-            key={i}
-            width={width}
-            height={1.5}
-            fill="var(--brand)"
-            initial={false}
-            animate={{ x: 24 - width / 2, y }}
-            transition={spring}
-          />
-        );
-      })}
-    </svg>
+      <motion.div
+        className="absolute"
+        initial={false}
+        animate={{ x: PAD + roadWidth, y: ROAD_Y }}
+        transition={spring}
+        style={{ translateX: "-50%", translateY: "-100%" }}
+      >
+        <Car className="size-10 text-brand" strokeWidth={2.25} />
+      </motion.div>
+    </div>
   );
 }

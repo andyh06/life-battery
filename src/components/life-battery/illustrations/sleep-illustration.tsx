@@ -1,45 +1,36 @@
 "use client";
 
+import { Moon, Sun } from "lucide-react";
 import { motion } from "motion/react";
 
+const spring = { type: "spring" as const, stiffness: 100, damping: 18 };
 const MAX_HOURS = 14;
-const spring = { type: "spring" as const, stiffness: 100, damping: 20 };
 
-/** A moon-to-sun arc; a marker sweeps along it as hours change, filling behind it. */
+/**
+ * Moon and Sun sit at opposite ends of a rotating bar, pivoting around a
+ * fixed horizon line — as hours change, the bar rotates and the proportion
+ * of "dark" (moon side) to "light" (sun side) above the horizon shifts.
+ */
 export function SleepIllustration({ hours }: { hours: number }) {
   const fraction = Math.min(1, Math.max(0, hours / MAX_HOURS));
-  const angle = fraction * Math.PI;
-  const markerX = 24 - 20 * Math.cos(angle);
-  const markerY = 32 - 20 * Math.sin(angle);
+  // Moon sits at the left end, Sun at the right — rotating clockwise (positive
+  // CSS deg) swings the right end (Sun) up and the left end (Moon) down, so
+  // this must go from +90 (moon dominant, short sleep) to -90 (sun dominant,
+  // oversleeping into daylight), not the other way.
+  const angle = 90 - fraction * 180;
 
   return (
-    <svg viewBox="0 0 48 40" className="h-24 w-24" fill="none">
-      <path
-        d="M4 32 A20 20 0 0 1 44 32"
-        stroke="var(--surface-2)"
-        strokeWidth={3}
-        strokeLinecap="round"
-      />
-      <motion.path
-        d="M4 32 A20 20 0 0 1 44 32"
-        stroke="var(--brand)"
-        strokeWidth={3}
-        strokeLinecap="round"
-        pathLength={1}
-        strokeDasharray="1"
+    <div className="relative flex h-24 w-24 items-center justify-center overflow-hidden">
+      <div className="absolute inset-x-2 top-1/2 h-px -translate-y-1/2 bg-surface-2" />
+      <motion.div
+        className="absolute flex w-20 items-center justify-between"
         initial={false}
-        animate={{ strokeDashoffset: 1 - fraction }}
+        animate={{ rotate: angle }}
         transition={spring}
-      />
-      <circle cx={4} cy={32} r={4} fill="var(--paper)" />
-      <circle cx={44} cy={32} r={4} fill="var(--brand)" />
-      <motion.circle
-        r={3.5}
-        fill="var(--paper)"
-        initial={false}
-        animate={{ cx: markerX, cy: markerY }}
-        transition={spring}
-      />
-    </svg>
+      >
+        <Moon className="size-7 text-paper" strokeWidth={2} />
+        <Sun className="size-7 text-brand" strokeWidth={2} />
+      </motion.div>
+    </div>
   );
 }

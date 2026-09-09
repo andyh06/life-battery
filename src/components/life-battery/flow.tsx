@@ -5,6 +5,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { Button } from "@/components/ui/button";
 import type { RiskFactorLevelRow, RiskFactorRow, Sex, StateRow } from "@/lib/data";
 import { bmiFromImperial } from "@/lib/bmi";
+import { computeExerciseMinutesPerWeek, type ExerciseIntensity } from "@/lib/exercise";
 import type { PredictResult } from "@/lib/predict";
 import { LandingScreen } from "./landing-screen";
 import { ModeSelectScreen } from "./mode-select-screen";
@@ -17,6 +18,8 @@ import type { Answers, QuestionStep, Stage, Tier, UnitSystem } from "./types";
 const DEFAULT_AGE = 30;
 const DEFAULT_HEIGHT_INCHES = 67; // 5'7", roughly the population average
 const DEFAULT_WEIGHT_LB = 160;
+const DEFAULT_EXERCISE_DAYS_PER_WEEK = 3;
+const DEFAULT_EXERCISE_MINUTES_PER_SESSION = 30;
 
 const questionVariants = {
   enter: (direction: number) => ({
@@ -51,6 +54,11 @@ export function LifeBatteryFlow({ states, riskFactors, riskFactorLevels }: LifeB
   const [heightWeightUnit, setHeightWeightUnit] = useState<UnitSystem>("imperial");
   const [heightInches, setHeightInches] = useState(DEFAULT_HEIGHT_INCHES);
   const [weightLb, setWeightLb] = useState(DEFAULT_WEIGHT_LB);
+  const [exerciseDaysPerWeek, setExerciseDaysPerWeek] = useState(DEFAULT_EXERCISE_DAYS_PER_WEEK);
+  const [exerciseMinutesPerSession, setExerciseMinutesPerSession] = useState(
+    DEFAULT_EXERCISE_MINUTES_PER_SESSION
+  );
+  const [exerciseIntensity, setExerciseIntensity] = useState<ExerciseIntensity>("moderate");
   const [stepIndex, setStepIndex] = useState(0);
   const [direction, setDirection] = useState<1 | -1>(1);
   const [result, setResult] = useState<PredictResult | null>(null);
@@ -68,6 +76,9 @@ export function LifeBatteryFlow({ states, riskFactors, riskFactorLevels }: LifeB
 
   const hasHeightWeightStep = steps.some(
     (s) => s.kind === "risk-factor" && s.riskFactor.inputType === "height_weight"
+  );
+  const hasExerciseStep = steps.some(
+    (s) => s.kind === "risk-factor" && s.riskFactor.key === "activity"
   );
 
   // 2 fixed steps (age, sex) + however many risk_factors rows carry that tier.
@@ -119,6 +130,13 @@ export function LifeBatteryFlow({ states, riskFactors, riskFactorLevels }: LifeB
     if (hasHeightWeightStep) {
       finalAnswers.bmi = bmiFromImperial(heightInches, weightLb);
     }
+    if (hasExerciseStep) {
+      finalAnswers.activity = computeExerciseMinutesPerWeek(
+        exerciseDaysPerWeek,
+        exerciseMinutesPerSession,
+        exerciseIntensity
+      );
+    }
     try {
       const response = await fetch("/api/predict", {
         method: "POST",
@@ -156,6 +174,9 @@ export function LifeBatteryFlow({ states, riskFactors, riskFactorLevels }: LifeB
     setHeightWeightUnit("imperial");
     setHeightInches(DEFAULT_HEIGHT_INCHES);
     setWeightLb(DEFAULT_WEIGHT_LB);
+    setExerciseDaysPerWeek(DEFAULT_EXERCISE_DAYS_PER_WEEK);
+    setExerciseMinutesPerSession(DEFAULT_EXERCISE_MINUTES_PER_SESSION);
+    setExerciseIntensity("moderate");
     setStepIndex(0);
     setResult(null);
     setErrorMessage(null);
@@ -259,12 +280,18 @@ export function LifeBatteryFlow({ states, riskFactors, riskFactorLevels }: LifeB
                 heightWeightUnit={heightWeightUnit}
                 heightInches={heightInches}
                 weightLb={weightLb}
+                exerciseDaysPerWeek={exerciseDaysPerWeek}
+                exerciseMinutesPerSession={exerciseMinutesPerSession}
+                exerciseIntensity={exerciseIntensity}
                 onAgeChange={setAge}
                 onSexChange={setSex}
                 onAnswerChange={handleAnswerChange}
                 onHeightWeightUnitChange={setHeightWeightUnit}
                 onHeightInchesChange={setHeightInches}
                 onWeightLbChange={setWeightLb}
+                onExerciseDaysPerWeekChange={setExerciseDaysPerWeek}
+                onExerciseMinutesPerSessionChange={setExerciseMinutesPerSession}
+                onExerciseIntensityChange={setExerciseIntensity}
                 onBack={handleBack}
                 onNext={handleNext}
                 isLast={stepIndex === steps.length - 1}

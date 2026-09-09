@@ -494,7 +494,7 @@ update indicators set include_in_model = false where key = 'water_violations';
 insert into risk_factors (key, label, question, help_text, category, tier, input_type, min_input, max_input, step, unit, optional, sensitive_note, sort_order) values
   ('smoking','Smoking','Do you smoke?','Smoking is the largest modifiable risk factor in this model, roughly tripling mortality risk for regular smokers in adjusted cohort studies.','habits','quick','choice',null,null,null,null,false,null,10),
   ('bmi','Body mass index','Your height and weight','Used to compute BMI.','body','quick','height_weight',null,null,null,'BMI',false,null,20),
-  ('activity','Physical activity','How much do you move in a typical week?','Moderate = brisk walking. Vigorous counts double.','habits','quick','slider',0,500,15,'min/week',false,null,30),
+  ('activity','Exercise','How much do you exercise?','Vigorous activity counts double toward the total - 150 min/week of moderate activity is the same guideline dose as 75 min/week vigorous.','habits','quick','slider',0,500,15,'min/week',false,null,30),
   ('sleep','Sleep','How many hours do you sleep on a typical night?','Both short and long sleep are linked to modestly higher mortality risk in pooled sleep-duration studies.','habits','quick','slider',0,14,0.5,'hours',false,null,40),
   ('alcohol','Alcohol','How much do you drink?','One drink = 12oz beer, 5oz wine, 1.5oz spirits.','habits','advanced','choice',null,null,null,null,false,null,50),
   ('diet','Diet pattern','How would you describe your eating?','Diet quality is linked to mortality risk in pooled dietary-pattern studies, though the effect is modest next to smoking.','habits','advanced','choice',null,null,null,null,false,null,60),
