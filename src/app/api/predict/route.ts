@@ -118,6 +118,7 @@ export async function POST(request: Request) {
     interventions.push({
       key: row.key,
       label: row.label,
+      headline: row.headline,
       detail: row.detail,
       riskFactorKey: row.riskFactorKey,
       fromLevel: row.fromLevel,

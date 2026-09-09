@@ -1,6 +1,6 @@
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { ContributionResult } from "@/lib/predict";
+import { AnimatedNumber } from "../animated-number";
 
 interface ContributionsPanelProps {
   contributions: ContributionResult[];
@@ -11,9 +11,9 @@ export function ContributionsPanel({ contributions }: ContributionsPanelProps) {
   const nonZero = contributions.filter((c) => c.yearsImpact > 0);
 
   return (
-    <Card className="w-full">
+    <Card className="w-full border-none bg-surface">
       <CardHeader>
-        <CardTitle className="text-lg">What drove this</CardTitle>
+        <CardTitle className="text-xl font-bold tracking-tight">What drove this</CardTitle>
       </CardHeader>
       <CardContent>
         {nonZero.length === 0 ? (
@@ -21,14 +21,20 @@ export function ContributionsPanel({ contributions }: ContributionsPanelProps) {
             Nothing you answered is currently costing you years relative to the reference level.
           </p>
         ) : (
-          <ul className="flex flex-col gap-2">
+          <ul className="flex flex-col divide-y divide-border">
             {nonZero.map((c) => (
               <li
                 key={c.riskFactorKey}
-                className="flex items-center justify-between gap-3 text-sm"
+                className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
               >
-                <span>{c.label}</span>
-                <Badge variant="secondary">-{c.yearsImpact.toFixed(1)} yrs</Badge>
+                <span className="font-medium">{c.label}</span>
+                <AnimatedNumber
+                  value={c.yearsImpact}
+                  decimals={1}
+                  prefix="-"
+                  suffix=" yrs"
+                  className="text-lg font-bold tabular-nums text-danger"
+                />
               </li>
             ))}
           </ul>

@@ -1,12 +1,15 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { geoAlbersUsa, geoPath } from "d3-geo";
 import { feature } from "topojson-client";
 import type { GeometryCollection, Topology } from "topojson-specification";
-import { animate, useReducedMotion } from "motion/react";
+import { animate, motion, useReducedMotion } from "motion/react";
 import usStatesTopology from "us-atlas/states-10m.json";
 import type { StateRow } from "@/lib/data";
+
+/** Delay between each state's entrance so the map assembles rather than appears at once. */
+const STAGGER_MS = 8;
 
 const WIDTH = 960;
 const HEIGHT = 600;
@@ -73,6 +76,18 @@ export function UsMap({ states, onSelect }: UsMapProps) {
   const [hoveredFips, setHoveredFips] = useState<string | null>(null);
   const [selectedFips, setSelectedFips] = useState<string | null>(null);
   const [pointer, setPointer] = useState<{ x: number; y: number } | null>(null);
+  // Ambient drift only kicks in once every state has finished assembling —
+  // otherwise the entrance stagger and the drift's own transform would fight
+  // for the same property mid-animation.
+  const [settled, setSettled] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(
+      () => setSettled(true),
+      states.length * STAGGER_MS + 400
+    );
+    return () => clearTimeout(timer);
+  }, [states.length]);
 
   function handlePointerMove(event: React.PointerEvent<SVGPathElement>) {
     const container = containerRef.current;
@@ -124,14 +139,18 @@ export function UsMap({ states, onSelect }: UsMapProps) {
       >
         {/* role="group" (not "img") so each state's role="button" stays exposed to assistive tech individually. */}
         <g role="group" aria-label="Select your state">
-          {states.map((state) => {
+          {states.map((state, index) => {
             const d = pathFor.get(state.fips);
             if (!d) return null;
             const isHovered = hoveredFips === state.fips;
             const isSelected = selectedFips === state.fips;
-            const isDimmed = selectedFips !== null && !isSelected;
+            const isLifted = isHovered && !selectedFips;
+            // A hovered (unselected) state dims every other state; once one is
+            // selected, everything but the selection dims regardless of hover.
+            const isDimmed = selectedFips !== null ? !isSelected : hoveredFips !== null && !isHovered;
+            const ambient = !prefersReducedMotion && settled && !isLifted;
             return (
-              <path
+              <motion.path
                 key={state.fips}
                 d={d}
                 tabIndex={0}
@@ -147,13 +166,37 @@ export function UsMap({ states, onSelect }: UsMapProps) {
                 onPointerEnter={() => !selectedFips && setHoveredFips(state.fips)}
                 onPointerLeave={() => setHoveredFips((prev) => (prev === state.fips ? null : prev))}
                 onPointerMove={handlePointerMove}
-                className="cursor-pointer outline-none transition-[fill,opacity] duration-150 focus-visible:stroke-ring focus-visible:stroke-2"
+                className="cursor-pointer outline-none transition-[fill] duration-150 focus-visible:stroke-ring focus-visible:stroke-2"
                 style={{
                   fill: isHovered || isSelected ? "var(--brand)" : "var(--secondary)",
                   stroke: "var(--background)",
                   strokeWidth: 1,
-                  opacity: isDimmed ? 0.35 : 1,
+                  transformBox: "fill-box",
+                  transformOrigin: "center",
                 }}
+                initial={prefersReducedMotion ? false : { opacity: 0, y: 6 }}
+                animate={
+                  isLifted
+                    ? { y: -3, scale: 1.04, opacity: isDimmed ? 0.35 : 1 }
+                    : ambient
+                      ? { y: [0, -1.2, 0], scale: 1, opacity: isDimmed ? 0.35 : 1 }
+                      : { y: 0, scale: 1, opacity: isDimmed ? 0.35 : 1 }
+                }
+                transition={
+                  isLifted
+                    ? { type: "spring", stiffness: 320, damping: 18 }
+                    : ambient
+                      ? {
+                          y: {
+                            duration: 4 + (index % 5),
+                            repeat: Infinity,
+                            ease: "easeInOut",
+                            delay: (index % 7) * 0.3,
+                          },
+                          scale: { duration: 0.25 },
+                        }
+                      : { duration: 0.35, delay: index * (STAGGER_MS / 1000), ease: "easeOut" }
+                }
               />
             );
           })}

@@ -18,8 +18,17 @@ import { Slider } from "@/components/ui/slider";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { RiskFactorLevelRow, Sex } from "@/lib/data";
 import { bmiFromImperial } from "@/lib/bmi";
-import { matchNumericLevel, SKIP_ANSWER } from "@/lib/risk-levels";
+import { matchNumericLevel, severityFromHazard, SKIP_ANSWER } from "@/lib/risk-levels";
 import { HeightWeightInput } from "./height-weight-input";
+import { AgeIllustration } from "./illustrations/age-illustration";
+import { ActivityIllustration } from "./illustrations/activity-illustration";
+import { AlcoholIllustration } from "./illustrations/alcohol-illustration";
+import { BmiGauge } from "./illustrations/bmi-gauge";
+import { DrivingIllustration } from "./illustrations/driving-illustration";
+import { SedentaryIllustration } from "./illustrations/sedentary-illustration";
+import { SleepIllustration } from "./illustrations/sleep-illustration";
+import { SmokingIllustration } from "./illustrations/smoking-illustration";
+import { SocialIllustration } from "./illustrations/social-illustration";
 import type { Answers, QuestionStep, UnitSystem } from "./types";
 
 const AGE_MIN = 18;
@@ -107,8 +116,10 @@ export function QuestionScreen({
   // can adjust, not something to submit blank.
   let canProceed = true;
   let body: ReactNode;
+  let illustration: ReactNode = null;
 
   if (step.kind === "age") {
+    illustration = <AgeIllustration age={age} />;
     question = "How old are you?";
     // Don't clamp on every keystroke — that fights the browser's own
     // editing of the field (typing "45" one digit at a time briefly holds
@@ -181,6 +192,11 @@ export function QuestionScreen({
 
     if (riskFactor.inputType === "choice") {
       canProceed = currentAnswer !== undefined;
+      const severity = severityFromHazard(allLevels, riskFactor.key, sex, currentAnswer);
+      if (riskFactor.key === "smoking") illustration = <SmokingIllustration severity={severity} />;
+      else if (riskFactor.key === "alcohol") illustration = <AlcoholIllustration severity={severity} />;
+      else if (riskFactor.key === "social") illustration = <SocialIllustration severity={severity} />;
+      else if (riskFactor.key === "driving") illustration = <DrivingIllustration severity={severity} />;
       body = (
         <RadioGroup
           value={typeof currentAnswer === "string" ? currentAnswer : ""}
@@ -213,6 +229,9 @@ export function QuestionScreen({
       const step = riskFactor.step ?? 1;
       const value = typeof currentAnswer === "number" ? currentAnswer : (min + max) / 2;
       const matched = matchNumericLevel(levels, value);
+      if (riskFactor.key === "sleep") illustration = <SleepIllustration hours={value} />;
+      else if (riskFactor.key === "activity") illustration = <ActivityIllustration minutesPerWeek={value} />;
+      else if (riskFactor.key === "sedentary") illustration = <SedentaryIllustration hours={value} />;
       body = (
         <div className="flex flex-col gap-3">
           <p className="text-2xl font-semibold">
@@ -232,6 +251,7 @@ export function QuestionScreen({
       const bmi = bmiFromImperial(heightInches, weightLb);
       const matched = matchNumericLevel(levels, bmi);
       canProceed = bmi > 0;
+      illustration = <BmiGauge bmi={bmi} />;
       body = (
         <div className="flex flex-col gap-3">
           <HeightWeightInput
@@ -279,28 +299,39 @@ export function QuestionScreen({
   }
 
   return (
-    <Card className="w-full max-w-sm">
-      <CardHeader>
-        <CardDescription>
-          Question {stepNumber} of {totalSteps}
-        </CardDescription>
-        {sensitiveNote ? (
-          <p className="rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
-            {sensitiveNote}
-          </p>
+    <Card className="w-full max-w-3xl border-none bg-surface">
+      <CardContent className="flex flex-col gap-8 sm:flex-row sm:items-center">
+        {illustration ? (
+          <div className="flex shrink-0 items-center justify-center self-center rounded-md bg-surface-2 p-4 sm:self-start">
+            {illustration}
+          </div>
         ) : null}
-        <CardTitle className="text-xl">{question}</CardTitle>
-        {helpText ? <CardDescription>{helpText}</CardDescription> : null}
-      </CardHeader>
-      <CardContent>{body}</CardContent>
-      <CardFooter className="flex justify-between">
-        <Button variant="outline" onClick={onBack}>
-          Back
-        </Button>
-        <Button onClick={onNext} disabled={!canProceed}>
-          {isLast ? "See my result" : "Next"}
-        </Button>
-      </CardFooter>
+        <div className="flex flex-1 flex-col gap-4">
+          <CardHeader className="p-0">
+            <CardDescription>
+              Question {stepNumber} of {totalSteps}
+            </CardDescription>
+            {sensitiveNote ? (
+              <p className="rounded-md bg-muted px-3 py-2 text-xs text-muted-foreground">
+                {sensitiveNote}
+              </p>
+            ) : null}
+            <CardTitle className="text-2xl font-bold tracking-tight sm:text-3xl">
+              {question}
+            </CardTitle>
+            {helpText ? <CardDescription>{helpText}</CardDescription> : null}
+          </CardHeader>
+          <div>{body}</div>
+          <CardFooter className="flex justify-between p-0 pt-2">
+            <Button variant="outline" onClick={onBack}>
+              Back
+            </Button>
+            <Button onClick={onNext} disabled={!canProceed}>
+              {isLast ? "See my result" : "Next"}
+            </Button>
+          </CardFooter>
+        </div>
+      </CardContent>
     </Card>
   );
 }

@@ -7,6 +7,8 @@ import type { RiskFactorLevelRow, RiskFactorRow, Sex, StateRow } from "@/lib/dat
 import { bmiFromImperial } from "@/lib/bmi";
 import type { PredictResult } from "@/lib/predict";
 import { LandingScreen } from "./landing-screen";
+import { ModeSelectScreen } from "./mode-select-screen";
+import { Progress } from "@/components/ui/progress";
 import { QuestionScreen } from "./question-screen";
 import { ResultScreen } from "./result/result-screen";
 import { StatePicker } from "./state-picker";
@@ -17,9 +19,19 @@ const DEFAULT_HEIGHT_INCHES = 67; // 5'7", roughly the population average
 const DEFAULT_WEIGHT_LB = 160;
 
 const questionVariants = {
-  enter: (direction: number) => ({ x: direction > 0 ? 48 : -48, opacity: 0 }),
-  center: { x: 0, opacity: 1 },
-  exit: (direction: number) => ({ x: direction > 0 ? -48 : 48, opacity: 0 }),
+  enter: (direction: number) => ({
+    x: direction > 0 ? 48 : -48,
+    opacity: 0,
+    scale: 0.98,
+    filter: "blur(4px)",
+  }),
+  center: { x: 0, opacity: 1, scale: 1, filter: "blur(0px)" },
+  exit: (direction: number) => ({
+    x: direction > 0 ? -48 : 48,
+    opacity: 0,
+    scale: 0.98,
+    filter: "blur(4px)",
+  }),
 };
 
 interface LifeBatteryFlowProps {
@@ -150,102 +162,132 @@ export function LifeBatteryFlow({ states, riskFactors, riskFactorLevels }: LifeB
   }
 
   return (
-    <div className="flex flex-1 items-center justify-center overflow-hidden p-4">
-      {/* Landing and the state picker cross-fade as one continuous motion —
-          the landing card fades out while the map fades and scales in,
-          rather than one screen finishing before the next starts. */}
-      <AnimatePresence mode="popLayout" initial={false}>
-        {stage === "landing" ? (
-          <motion.div
-            key="landing"
-            exit={{ opacity: 0 }}
-            transition={{ duration: prefersReducedMotion ? 0 : 0.4 }}
-            className="w-full max-w-sm"
-          >
-            <LandingScreen
-              tier={tier}
-              quickCount={quickCount}
-              advancedCount={advancedCount}
-              onTierChange={setTier}
-              onBegin={() => setStage("select-state")}
-            />
-          </motion.div>
-        ) : null}
-
-        {stage === "select-state" ? (
-          <motion.div
-            key="select-state"
-            initial={{ opacity: 0, scale: 0.92 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{
-              duration: prefersReducedMotion ? 0 : 0.5,
-              ease: [0.22, 1, 0.36, 1],
-            }}
-            className="flex w-full flex-col items-center gap-4"
-          >
-            <div className="flex w-full max-w-3xl items-center justify-between">
-              <Button variant="ghost" onClick={() => setStage("landing")}>
-                Back
-              </Button>
-              <p className="text-sm text-muted-foreground">Select your state</p>
-              <div className="w-16" />
-            </div>
-            <StatePicker states={states} value={stateFips} onSelect={handleSelectState} />
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
-
+    <div className="relative flex flex-1 flex-col overflow-hidden">
       {stage === "questions" ? (
-        <AnimatePresence mode="popLayout" custom={direction} initial={false}>
-          <motion.div
-            key={stepIndex}
-            custom={direction}
-            variants={questionVariants}
-            initial="enter"
-            animate="center"
-            exit="exit"
-            transition={{ duration: prefersReducedMotion ? 0 : 0.25, ease: "easeOut" }}
-            className="w-full max-w-sm"
-          >
-            <QuestionScreen
-              step={steps[stepIndex]}
-              stepNumber={stepIndex + 1}
-              totalSteps={steps.length}
-              age={age}
-              sex={sex}
-              answers={answers}
-              allLevels={riskFactorLevels}
-              heightWeightUnit={heightWeightUnit}
-              heightInches={heightInches}
-              weightLb={weightLb}
-              onAgeChange={setAge}
-              onSexChange={setSex}
-              onAnswerChange={handleAnswerChange}
-              onHeightWeightUnitChange={setHeightWeightUnit}
-              onHeightInchesChange={setHeightInches}
-              onWeightLbChange={setWeightLb}
-              onBack={handleBack}
-              onNext={handleNext}
-              isLast={stepIndex === steps.length - 1}
-            />
-          </motion.div>
-        </AnimatePresence>
-      ) : null}
-
-      {stage === "submitting" ? (
-        <p className="text-sm text-muted-foreground">Crunching your numbers...</p>
-      ) : null}
-
-      {stage === "result" && result ? (
-        <ResultScreen result={result} onStartOver={handleStartOver} />
-      ) : null}
-
-      {stage === "error" ? (
-        <div className="flex w-full max-w-sm flex-col items-center gap-4 text-center">
-          <p className="text-sm text-destructive">{errorMessage}</p>
-          <Button onClick={() => void submit()}>Try again</Button>
+        <div className="w-full px-4 pt-4">
+          <Progress
+            value={((stepIndex + 1) / steps.length) * 100}
+            trackClassName="h-1.5 rounded-none bg-surface-2"
+            indicatorClassName="rounded-none bg-brand transition-[width] duration-300 ease-out"
+          />
         </div>
       ) : null}
+
+      <div className="flex flex-1 items-center justify-center p-4">
+        {/* Landing fades its text out as mode-select comes up; mode-select
+            then fades/zooms into the map; each stage owns its own exit so
+            the sequence reads as one continuous motion rather than
+            screens finishing before the next starts. */}
+        <AnimatePresence mode="popLayout" initial={false}>
+          {stage === "landing" ? (
+            <motion.div
+              key="landing"
+              exit={{ opacity: 0 }}
+              transition={{ duration: prefersReducedMotion ? 0 : 0.4 }}
+              className="w-full"
+            >
+              <LandingScreen onBegin={() => setStage("mode-select")} />
+            </motion.div>
+          ) : null}
+
+          {stage === "mode-select" ? (
+            <motion.div
+              key="mode-select"
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{
+                duration: prefersReducedMotion ? 0 : 0.4,
+                ease: [0.22, 1, 0.36, 1],
+              }}
+              className="flex w-full justify-center"
+            >
+              <ModeSelectScreen
+                quickCount={quickCount}
+                advancedCount={advancedCount}
+                onSelect={(selectedTier) => {
+                  setTier(selectedTier);
+                  setStage("select-state");
+                }}
+              />
+            </motion.div>
+          ) : null}
+
+          {stage === "select-state" ? (
+            <motion.div
+              key="select-state"
+              initial={{ opacity: 0, scale: 0.92 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{
+                duration: prefersReducedMotion ? 0 : 0.5,
+                ease: [0.22, 1, 0.36, 1],
+              }}
+              className="flex w-full flex-col items-center gap-4"
+            >
+              <div className="flex w-full max-w-3xl items-center justify-between">
+                <Button variant="ghost" onClick={() => setStage("mode-select")}>
+                  Back
+                </Button>
+                <p className="text-sm text-muted-foreground">Select your state</p>
+                <div className="w-16" />
+              </div>
+              <StatePicker states={states} value={stateFips} onSelect={handleSelectState} />
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+
+        {stage === "questions" ? (
+          <AnimatePresence mode="popLayout" custom={direction} initial={false}>
+            <motion.div
+              key={stepIndex}
+              custom={direction}
+              variants={questionVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{ duration: prefersReducedMotion ? 0 : 0.25, ease: "easeOut" }}
+              className="w-full max-w-3xl"
+            >
+              <QuestionScreen
+                step={steps[stepIndex]}
+                stepNumber={stepIndex + 1}
+                totalSteps={steps.length}
+                age={age}
+                sex={sex}
+                answers={answers}
+                allLevels={riskFactorLevels}
+                heightWeightUnit={heightWeightUnit}
+                heightInches={heightInches}
+                weightLb={weightLb}
+                onAgeChange={setAge}
+                onSexChange={setSex}
+                onAnswerChange={handleAnswerChange}
+                onHeightWeightUnitChange={setHeightWeightUnit}
+                onHeightInchesChange={setHeightInches}
+                onWeightLbChange={setWeightLb}
+                onBack={handleBack}
+                onNext={handleNext}
+                isLast={stepIndex === steps.length - 1}
+              />
+            </motion.div>
+          </AnimatePresence>
+        ) : null}
+
+        {stage === "submitting" ? (
+          <p className="text-sm text-muted-foreground">Crunching your numbers...</p>
+        ) : null}
+
+        {stage === "result" && result ? (
+          <ResultScreen result={result} onStartOver={handleStartOver} />
+        ) : null}
+
+        {stage === "error" ? (
+          <div className="flex w-full max-w-sm flex-col items-center gap-4 text-center">
+            <p className="text-sm text-destructive">{errorMessage}</p>
+            <Button onClick={() => void submit()}>Try again</Button>
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }

@@ -47,6 +47,7 @@ describe("predict", () => {
       {
         key: "quit_smoking",
         label: "Stop smoking",
+        headline: null,
         detail: null,
         riskFactorKey: "smoking",
         fromLevel: "test-level",
@@ -161,6 +162,7 @@ describe("predict", () => {
       {
         key: "quit_smoking",
         label: "Stop smoking",
+        headline: null,
         detail: null,
         riskFactorKey: "smoking",
         fromLevel: "current",
@@ -171,6 +173,7 @@ describe("predict", () => {
       {
         key: "not_eligible",
         label: "Wrong from_level",
+        headline: null,
         detail: null,
         riskFactorKey: "smoking",
         fromLevel: "recent_quit", // doesn't match the user's actual level ("test-level")
@@ -181,6 +184,7 @@ describe("predict", () => {
       {
         key: "unanswered_factor",
         label: "Factor the user never answered",
+        headline: null,
         detail: null,
         riskFactorKey: "alcohol",
         fromLevel: null,
@@ -201,6 +205,7 @@ describe("predict", () => {
       {
         key: "meet_activity",
         label: "Meet the activity guideline",
+        headline: null,
         detail: null,
         riskFactorKey: "activity",
         fromLevel: null,

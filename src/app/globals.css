@@ -5,13 +5,19 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  --color-ink: var(--ink);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
   --color-brand: var(--brand);
   --color-brand-foreground: var(--brand-foreground);
+  --color-danger: var(--danger);
+  --color-danger-foreground: var(--danger-foreground);
+  --color-paper: var(--paper);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
+  --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
+  --font-heading: var(--font-geist-sans);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -51,49 +57,67 @@
 }
 
 /*
- * Life Battery's visual identity is a single fixed dark theme, not a
- * light/dark toggle — there is no `.dark` class applied anywhere, these
- * values just live on `:root` directly. One brand accent (a vivid
- * electric green-teal) is used everywhere something needs to draw the
- * eye: the battery fill, the selected map state, the focus ring, the
- * primary button — never a red/amber/green traffic light on the result,
- * since that would editorialize a life-expectancy number.
+ * Life Battery Stage 2.5: a hazard-sign graphic poster, not a dashboard.
+ * Fixed dark theme (no light/dark toggle, no `.dark` class anywhere).
+ *
+ * Two accents, two different jobs:
+ *   --brand (yellow)  the ONE interactive/primary color — battery fill,
+ *                      selected map state, buttons, focus ring. It never
+ *                      changes with the result: the battery is exactly as
+ *                      yellow at 12% as it is at 92%. Editorializing a
+ *                      life-expectancy number with color is the thing we're
+ *                      explicitly not doing.
+ *   --danger (red)     a GRAPHIC accent for the hazard-stripe motif and
+ *                      illustration details (a cigarette's ember, a filling
+ *                      glass). It is not a status color and never means
+ *                      "bad" on its own — it means "this is the graphic
+ *                      language," same as the yellow stripes next to it.
  */
 :root {
-  --brand: oklch(0.82 0.19 165);
-  --brand-foreground: oklch(0.16 0.03 165);
+  --ink: #0b0b0c;
+  --surface: #141416;
+  --surface-2: #1e1e21;
+  --brand: #ffd400;
+  --brand-foreground: #17140a;
+  --danger: #ff3b21;
+  --danger-foreground: #1c0500;
+  --paper: #f5f2ea;
 
-  --background: oklch(0.15 0.006 260);
-  --foreground: oklch(0.94 0.004 260);
-  --card: oklch(0.19 0.007 260);
-  --card-foreground: oklch(0.94 0.004 260);
-  --popover: oklch(0.19 0.007 260);
-  --popover-foreground: oklch(0.94 0.004 260);
+  --background: var(--ink);
+  --foreground: var(--paper);
+  --card: var(--surface);
+  --card-foreground: var(--paper);
+  --popover: var(--surface-2);
+  --popover-foreground: var(--paper);
   --primary: var(--brand);
   --primary-foreground: var(--brand-foreground);
-  --secondary: oklch(0.24 0.008 260);
-  --secondary-foreground: oklch(0.94 0.004 260);
-  --muted: oklch(0.24 0.008 260);
-  --muted-foreground: oklch(0.65 0.012 260);
-  --accent: oklch(0.26 0.009 260);
-  --accent-foreground: oklch(0.94 0.004 260);
-  --destructive: oklch(0.7 0.16 25);
-  --border: oklch(1 0 0 / 8%);
-  --input: oklch(1 0 0 / 10%);
+  --secondary: var(--surface-2);
+  --secondary-foreground: var(--paper);
+  --muted: var(--surface-2);
+  /* This is the brief's "--muted" (#8A8A90, secondary text) — it lives on
+     shadcn's existing --muted-foreground slot, which already means exactly
+     that, rather than duplicating a second identically-purposed variable. */
+  --muted-foreground: #8a8a90;
+  --accent: var(--surface-2);
+  --accent-foreground: var(--paper);
+  --destructive: var(--danger);
+  --destructive-foreground: var(--danger-foreground);
+  --border: rgb(245 242 234 / 12%);
+  --input: rgb(245 242 234 / 14%);
   --ring: var(--brand);
   --chart-1: var(--brand);
-  --chart-2: oklch(0.65 0.012 260);
-  --chart-3: oklch(0.5 0.012 260);
-  --chart-4: oklch(0.35 0.012 260);
-  --chart-5: oklch(0.26 0.009 260);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.19 0.007 260);
-  --sidebar-foreground: oklch(0.94 0.004 260);
+  --chart-2: var(--danger);
+  --chart-3: #8a8a90;
+  --chart-4: var(--surface-2);
+  --chart-5: var(--paper);
+  --radius: 0.375rem;
+  --sidebar: var(--surface);
+  --sidebar-foreground: var(--paper);
   --sidebar-primary: var(--brand);
   --sidebar-primary-foreground: var(--brand-foreground);
-  --sidebar-accent: oklch(0.26 0.009 260);
-  --sidebar-accent-foreground: oklch(0.94 0.004 260);
-  --sidebar-border: oklch(1 0 0 / 8%);
+  --sidebar-accent: var(--surface-2);
+  --sidebar-accent-foreground: var(--paper);
+  --sidebar-border: rgb(245 242 234 / 12%);
   --sidebar-ring: var(--brand);
 }
 
@@ -118,4 +142,51 @@
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* ---------------------------------------------------------------
+ * Hazard-poster motif
+ * --------------------------------------------------------------- */
+
+/* Diagonal black/yellow caution stripes — the empty portion of the
+   battery, section dividers, the persistent question-progress track. */
+.hazard-stripes {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    var(--brand) 0px,
+    var(--brand) 10px,
+    var(--ink) 10px,
+    var(--ink) 20px
+  );
+}
+
+/* Thin caution tape framing the viewport itself ("page edges"). */
+body::before,
+body::after {
+  content: "";
+  position: fixed;
+  left: 0;
+  right: 0;
+  height: 8px;
+  background-image: repeating-linear-gradient(
+    -45deg,
+    var(--brand) 0px,
+    var(--brand) 10px,
+    var(--ink) 10px,
+    var(--ink) 20px
+  );
+  z-index: 50;
+  pointer-events: none;
+}
+body::before {
+  top: 0;
+}
+body::after {
+  bottom: 0;
+}
+
+/* Subtle dot-grid so the ground isn't flat black. */
+.dot-grid {
+  background-image: radial-gradient(circle, rgb(245 242 234 / 7%) 1px, transparent 1px);
+  background-size: 28px 28px;
 }

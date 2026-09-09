@@ -584,15 +584,15 @@ insert into risk_factor_levels (risk_factor_key, level_key, label, hazard_ratio,
   ('driving','5k_15k','5,000-15,000 miles',1.02,'all',null,null,'5,000 to 15,000 miles a year - a typical commute-driven yearly total.',null,null,2),
   ('driving','over15k','Over 15,000 miles',1.05,'all',null,null,'15,000 miles is about 40 miles a day, roughly a daily commute across a mid-sized city.',null,'Exposure-linear crash risk.',3);
 
-insert into interventions (key, label, detail, category, risk_factor_key, from_level, to_level, evidence_note, source_id, sort_order) values
-  ('quit_smoking','Stop smoking','The single largest modifiable factor','habits','smoking','current','former','Quitting before 40 avoids roughly 90% of the excess mortality from smoking.','jha_2013',10),
-  ('meet_activity','Meet the activity guideline','150 min/week of moderate movement','habits','activity','none','guideline','Going from no leisure activity to meeting the guideline is associated with a 31% lower mortality rate.','arem_2015',20),
-  ('mediterranean','Adopt a Mediterranean-style diet','The most-studied longevity eating pattern','habits','diet','poor','good','Each 2-point rise in adherence score is associated with an 8% reduction in all-cause mortality.','sofi_2010',30),
-  ('fix_sleep','Sleep 7-8 hours','Not 5, and not 11','habits','sleep','five_six','seven_eight','Both short and long sleep track higher mortality; 7-8 hours sits at the bottom of the curve.','cappuccio_2010',40),
-  ('social_ties','Strengthen social ties','Effect comparable to quitting smoking','socioeconomic','social','isolated','strong','Strong social relationships are associated with a 50% greater likelihood of survival across 148 studies.','holtlunstad_2010',50),
-  ('reduce_bmi','Move toward a healthy weight','Even one BMI band matters','body','bmi','obese1','over2','Mortality rises roughly log-linearly above BMI 25 in never-smokers.','gbmc_2016',60),
-  ('cut_drinking','Drink less','Fewer than 7 a week','habits','alcohol','heavy','light','Risk rises steadily above roughly 100g of alcohol per week.',null,70),
-  ('control_bp','Get blood pressure controlled','Treatment recovers most of the risk','clinical','hypertension','uncontrolled','controlled','Treated and controlled hypertension carries substantially lower risk than uncontrolled.',null,80);
+insert into interventions (key, label, headline, detail, category, risk_factor_key, from_level, to_level, evidence_note, source_id, sort_order) values
+  ('quit_smoking','Stop smoking','Quitting smoking is the single biggest thing on this list','The single largest modifiable factor','habits','smoking','current','former','Quitting before 40 avoids roughly 90% of the excess mortality from smoking.','jha_2013',10),
+  ('meet_activity','Meet the activity guideline','150 minutes a week buys more than the gym membership implies','150 min/week of moderate movement','habits','activity','none','guideline','Going from no leisure activity to meeting the guideline is associated with a 31% lower mortality rate.','arem_2015',20),
+  ('mediterranean','Adopt a Mediterranean-style diet','Your fork is a longevity lever','The most-studied longevity eating pattern','habits','diet','poor','good','Each 2-point rise in adherence score is associated with an 8% reduction in all-cause mortality.','sofi_2010',30),
+  ('fix_sleep','Sleep 7-8 hours','Sleep is the cheapest year you''ll ever buy','Not 5, and not 11','habits','sleep','five_six','seven_eight','Both short and long sleep track higher mortality; 7-8 hours sits at the bottom of the curve.','cappuccio_2010',40),
+  ('social_ties','Strengthen social ties','Loneliness is a health condition','Effect comparable to quitting smoking','socioeconomic','social','isolated','strong','Strong social relationships are associated with a 50% greater likelihood of survival across 148 studies.','holtlunstad_2010',50),
+  ('reduce_bmi','Move toward a healthy weight','One BMI band down is one real step','Even one BMI band matters','body','bmi','obese1','over2','Mortality rises roughly log-linearly above BMI 25 in never-smokers.','gbmc_2016',60),
+  ('cut_drinking','Drink less','Fewer drinks, more years','Fewer than 7 a week','habits','alcohol','heavy','light','Risk rises steadily above roughly 100g of alcohol per week.',null,70),
+  ('control_bp','Get blood pressure controlled','Untreated blood pressure is a solvable problem','Treatment recovers most of the risk','clinical','hypertension','uncontrolled','controlled','Treated and controlled hypertension carries substantially lower risk than uncontrolled.',null,80);
 
 insert into mascot_quips (trigger, risk_factor_key, level_key, min_value, max_value, min_percent, max_percent, text, mood, priority) values
   ('intro',null,null,null,null,null,null,'Alright. Let us find out how you are doing.','neutral',0),

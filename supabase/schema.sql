@@ -207,12 +207,13 @@ create table estimates (
 create table interventions (
   key             text primary key,
   label           text not null,   -- "Meet the activity guideline"
+  headline        text,            -- voice: "Sleep is the cheapest year you'll ever buy"
   detail          text,            -- "150 min/week moderate movement"
   category        text,
   risk_factor_key text not null references risk_factors(key) on delete cascade,
   from_level      text,
   to_level        text not null,
-  evidence_note   text,            -- one-line finding from the study
+  evidence_note   text,            -- facts: one-line finding from the study
   source_id       text references sources(id),
   sort_order      int default 0,
   active          boolean not null default true

@@ -34,6 +34,7 @@ export interface AnsweredFactor {
 export interface InterventionOption {
   key: string;
   label: string;
+  headline: string | null;
   detail: string | null;
   riskFactorKey: string;
   /** null means "applies whenever the user's current level is worse than toLevel". */
@@ -63,6 +64,7 @@ export interface ContributionResult {
 export interface InterventionResult {
   key: string;
   label: string;
+  headline: string | null;
   detail: string | null;
   riskFactorKey: string;
   evidenceNote: string | null;
@@ -200,6 +202,7 @@ export function predict(input: PredictInput): PredictResult {
       return {
         key: option.key,
         label: option.label,
+        headline: option.headline,
         detail: option.detail,
         riskFactorKey: option.riskFactorKey,
         evidenceNote: option.evidenceNote,

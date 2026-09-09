@@ -4,7 +4,7 @@
  * they're about to land in as they drag) — one implementation so the live
  * preview can never drift from what the API actually computes.
  */
-import type { RiskFactorLevelRow } from "./data";
+import type { RiskFactorLevelRow, Sex } from "./data";
 
 /**
  * Finds the risk_factor_levels row whose [minValue, maxValue) band contains
@@ -39,3 +39,30 @@ export function matchNumericLevel(
  * incidental side effect of an unmatched string.
  */
 export const SKIP_ANSWER = "__prefer_not_to_say__";
+
+/**
+ * Normalizes a choice answer's hazard ratio to 0-1 within its own factor's
+ * levels, for the reactive illustrations — hazard ratio (not sortOrder or
+ * display order) is what actually tracks "worse," and it isn't always
+ * monotonic with either (e.g. alcohol's lowest hazard is "light," not
+ * "none"). Unanswered defaults to 0 (the least-severe visual state) rather
+ * than guessing which level is "current."
+ */
+export function severityFromHazard(
+  levels: RiskFactorLevelRow[],
+  riskFactorKey: string,
+  sex: Sex | null,
+  levelKey: string | number | undefined
+): number {
+  const factorLevels = levels.filter(
+    (l) => l.riskFactorKey === riskFactorKey && (l.appliesToSex === "all" || l.appliesToSex === sex)
+  );
+  if (factorLevels.length === 0 || typeof levelKey !== "string") return 0;
+  const hazards = factorLevels.map((l) => l.hazardRatio);
+  const min = Math.min(...hazards);
+  const max = Math.max(...hazards);
+  if (max === min) return 0;
+  const current = factorLevels.find((l) => l.levelKey === levelKey);
+  if (!current) return 0;
+  return (current.hazardRatio - min) / (max - min);
+}

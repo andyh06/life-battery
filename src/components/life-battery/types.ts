@@ -10,6 +10,7 @@ export type Tier = "quick" | "advanced";
 
 export type Stage =
   | "landing"
+  | "mode-select"
   | "select-state"
   | "questions"
   | "submitting"

@@ -55,6 +55,8 @@ export interface RiskFactorLevelRow {
 export interface InterventionRow {
   key: string;
   label: string;
+  /** Voice: a one-line, punchy statement. evidenceNote carries the fact underneath it. */
+  headline: string | null;
   detail: string | null;
   category: string | null;
   riskFactorKey: string;
@@ -180,7 +182,7 @@ export const getInterventions = unstable_cache(
     const { data, error } = await supabase
       .from("interventions")
       .select(
-        "key, label, detail, category, risk_factor_key, from_level, to_level, evidence_note, sort_order"
+        "key, label, headline, detail, category, risk_factor_key, from_level, to_level, evidence_note, sort_order"
       )
       .eq("active", true)
       .order("sort_order", { ascending: true });
@@ -189,6 +191,7 @@ export const getInterventions = unstable_cache(
     return (data ?? []).map((r) => ({
       key: r.key,
       label: r.label,
+      headline: r.headline,
       detail: r.detail,
       category: r.category,
       riskFactorKey: r.risk_factor_key,
