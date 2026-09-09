@@ -1,6 +1,5 @@
 "use client";
 
-import { Info } from "lucide-react";
 import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,13 +14,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Slider } from "@/components/ui/slider";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { RiskFactorLevelRow, Sex } from "@/lib/data";
 import { bmiFromImperial } from "@/lib/bmi";
 import { computeExerciseMinutesPerWeek, type ExerciseIntensity } from "@/lib/exercise";
 import { matchNumericLevel, severityFromSortOrder, SKIP_ANSWER } from "@/lib/risk-levels";
 import { ExerciseInput } from "./exercise-input";
 import { HeightWeightInput } from "./height-weight-input";
+import { InfoTooltip } from "./info-tooltip";
 import { AgeIllustration } from "./illustrations/age-illustration";
 import { ActivityIllustration } from "./illustrations/activity-illustration";
 import { AlcoholIllustration } from "./illustrations/alcohol-illustration";
@@ -44,26 +43,6 @@ function firstSliderValue(v: number | readonly number[]): number {
 /** "1 hours" reads wrong. Units are plural by convention in the DB (e.g. "hours"); singularize at exactly 1. */
 function pluralizeUnit(value: number, unit: string): string {
   return Math.abs(value) === 1 && unit.endsWith("s") ? unit.slice(0, -1) : unit;
-}
-
-/** Small info icon that reveals `text` on hover AND keyboard focus (Base UI's Tooltip trigger handles both natively). */
-function InfoTooltip({ text }: { text: string }) {
-  return (
-    <Tooltip>
-      <TooltipTrigger
-        render={
-          <button
-            type="button"
-            className="inline-flex size-4 items-center justify-center rounded-full text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
-            aria-label="More information"
-          >
-            <Info className="size-3.5" />
-          </button>
-        }
-      />
-      <TooltipContent>{text}</TooltipContent>
-    </Tooltip>
-  );
 }
 
 interface QuestionScreenProps {
@@ -337,7 +316,7 @@ export function QuestionScreen({
     <Card className="w-full max-w-3xl border-none bg-surface">
       <CardContent className="flex flex-col gap-8 sm:flex-row sm:items-center">
         {illustration ? (
-          <div className="flex shrink-0 items-center justify-center self-center rounded-md bg-surface-2 p-4 sm:self-start">
+          <div className="flex shrink-0 items-center justify-center self-center overflow-hidden rounded-md bg-surface-2 p-4 sm:self-start">
             {illustration}
           </div>
         ) : null}

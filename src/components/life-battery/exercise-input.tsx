@@ -6,6 +6,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import type { RiskFactorLevelRow } from "@/lib/data";
 import { computeExerciseMinutesPerWeek, type ExerciseIntensity } from "@/lib/exercise";
 import { matchNumericLevel } from "@/lib/risk-levels";
+import { InfoTooltip } from "./info-tooltip";
 
 const INTENSITY_OPTIONS: { value: ExerciseIntensity; label: string }[] = [
   { value: "light", label: "Light" },
@@ -45,9 +46,10 @@ export function ExerciseInput({
     <div className="flex flex-col gap-4">
       <div className="flex gap-3">
         <div className="flex flex-1 flex-col gap-1.5">
-          <Label htmlFor="exercise-days">
-            Days a week you do something that gets you breathing harder
-          </Label>
+          <div className="flex items-center gap-1.5">
+            <Label htmlFor="exercise-days">Days a week you exercise</Label>
+            <InfoTooltip text="Anything that gets you breathing harder - a brisk walk counts." />
+          </div>
           <Input
             id="exercise-days"
             type="number"

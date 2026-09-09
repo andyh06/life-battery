@@ -23,7 +23,7 @@ export function BmiGauge({ bmi }: { bmi: number }) {
   const needleY = cy - r * Math.sin(angle);
 
   return (
-    <svg viewBox="0 0 48 34" className="h-24 w-24" fill="none">
+    <svg viewBox="0 0 48 34" className="h-24 w-24 overflow-hidden" fill="none">
       <path d="M4 30 A20 20 0 0 1 44 30" stroke="var(--surface-2)" strokeWidth={3} strokeLinecap="round" />
       {TICKS.map((tick) => {
         const tFraction = (tick - GAUGE_MIN) / (GAUGE_MAX - GAUGE_MIN);

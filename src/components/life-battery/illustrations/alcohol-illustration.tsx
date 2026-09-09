@@ -12,7 +12,7 @@ export function AlcoholIllustration({ severity }: { severity: number }) {
   const active = s * GLASS_COUNT;
 
   return (
-    <div className="flex h-24 w-24 items-center justify-center gap-1.5">
+    <div className="flex h-24 w-24 items-center justify-center gap-1 overflow-hidden">
       {Array.from({ length: GLASS_COUNT }, (_, i) => {
         const fill = Math.min(1, Math.max(0, active - i));
         return (
@@ -22,7 +22,11 @@ export function AlcoholIllustration({ severity }: { severity: number }) {
             animate={{ opacity: 0.15 + fill * 0.85, scale: 0.75 + fill * 0.35 }}
             transition={spring}
           >
-            <Wine className="size-7 text-brand" strokeWidth={2} />
+            {/* 5 icons at size-3.5 (14px) + gap-1 (4px) = 86px at rest, with
+                room to spare even at the 1.1x max scale — a size-7 row (the
+                other illustrations' default) would be 164px, well past the
+                96px frame. */}
+            <Wine className="size-3.5 text-brand" strokeWidth={2} />
           </motion.div>
         );
       })}

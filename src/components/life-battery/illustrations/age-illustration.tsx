@@ -15,7 +15,12 @@ export function AgeIllustration({ age }: { age: number }) {
   const fraction = (a - MIN_AGE) / (MAX_AGE - MIN_AGE);
 
   return (
-    <div className="flex h-24 w-24 flex-col items-center justify-center gap-3">
+    // px-3.5 insets the track by half the marker icon's width (size-7 = 28px)
+    // so the marker's centered position at 0%/100% stays inside the 96px
+    // frame instead of hanging its far half off the edge — the dot row below
+    // doesn't strictly need it (flex items never exceed their container),
+    // but sharing the inset keeps the marker aligned with its decade dot.
+    <div className="flex h-24 w-24 flex-col items-center justify-center gap-3 overflow-hidden px-3.5">
       <div className="relative h-7 w-full">
         <motion.div
           className="absolute top-0"

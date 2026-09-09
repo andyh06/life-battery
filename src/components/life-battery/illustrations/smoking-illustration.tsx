@@ -12,7 +12,7 @@ export function SmokingIllustration({ severity }: { severity: number }) {
   const endX = startX + length;
 
   return (
-    <svg viewBox="0 0 48 48" className="h-24 w-24" fill="none">
+    <svg viewBox="0 0 48 48" className="h-24 w-24 overflow-hidden" fill="none">
       <motion.rect
         y={20}
         height={8}
@@ -38,7 +38,10 @@ export function SmokingIllustration({ severity }: { severity: number }) {
         fill="none"
         initial={false}
         animate={{
-          d: `M ${endX + 2} 19 Q ${endX + 8} ${8 - s * 8} ${endX + 14} ${12 - s * 14}`,
+          // Clamped to 0 — at high severity the unclamped curve reached
+          // y=-2, past the top of the 0-48 viewBox (the SVG's default
+          // overflow:hidden masked it, but the tip was being cut off).
+          d: `M ${endX + 2} 19 Q ${endX + 8} ${Math.max(0, 8 - s * 8)} ${endX + 14} ${Math.max(0, 12 - s * 14)}`,
           opacity: 0.3 + s * 0.5,
         }}
         transition={spring}

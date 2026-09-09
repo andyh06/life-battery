@@ -8,7 +8,9 @@ const spring = { type: "spring" as const, stiffness: 100, damping: 18 };
 /** severity: 0 (strong ties) to 1 (isolated) — dots drift apart from a tight cluster and their connecting lines fade. */
 export function SocialIllustration({ severity }: { severity: number }) {
   const s = Math.min(1, Math.max(0, severity));
-  const radius = 6 + s * 15;
+  // radius + dot radius (4) must stay within the 0-48 viewBox; 6+13=19, +4=23,
+  // leaving a 1-unit margin against the 24-center/48-wide frame.
+  const radius = 6 + s * 13;
   const center = 24;
 
   const points = Array.from({ length: POINT_COUNT }, (_, i) => {
@@ -20,7 +22,7 @@ export function SocialIllustration({ severity }: { severity: number }) {
   });
 
   return (
-    <svg viewBox="0 0 48 48" className="h-24 w-24" fill="none">
+    <svg viewBox="0 0 48 48" className="h-24 w-24 overflow-hidden" fill="none">
       {points.map((a, i) =>
         points.slice(i + 1).map((b, j) => (
           <motion.line
