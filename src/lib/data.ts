@@ -242,6 +242,57 @@ export const getInterventions = unstable_cache(
   { revalidate: REFERENCE_DATA_REVALIDATE_SECONDS }
 );
 
+export interface LeadingCauseRow {
+  causeName: string;
+  deaths: number;
+  /** 0-100, this cause's deaths as a share of the "All causes" total for the same state/year. */
+  sharePercent: number;
+}
+
+export interface LeadingCausesResult {
+  /** Most recent year with data for this state — NCHS leading_causes runs 1999-2017, so this is typically 2017. */
+  year: number;
+  causes: LeadingCauseRow[];
+}
+
+/**
+ * leading_causes is state x cause x year only — CDC's aggregate dataset has
+ * no age or sex breakdown, so this is population data for the whole state,
+ * not for anyone's specific age/sex bracket. Callers must not present it as
+ * age- or sex-matched. "All causes" is the denominator row, not a cause, so
+ * it's excluded from the ranked list.
+ */
+export const getLeadingCauses = unstable_cache(
+  async (stateFips: string): Promise<LeadingCausesResult | null> => {
+    const { data, error } = await supabase
+      .from("leading_causes")
+      .select("cause_name, deaths, year")
+      .eq("state_fips", stateFips);
+
+    if (error) throw new Error(`leading_causes query failed: ${error.message}`);
+    if (!data || data.length === 0) return null;
+
+    const latestYear = Math.max(...data.map((r) => r.year));
+    const rowsForYear = data.filter((r) => r.year === latestYear);
+    const allCauses = rowsForYear.find((r) => r.cause_name === "All causes");
+    if (!allCauses || allCauses.deaths <= 0) return null;
+
+    const causes = rowsForYear
+      .filter((r) => r.cause_name !== "All causes")
+      .sort((a, b) => b.deaths - a.deaths)
+      .slice(0, 5)
+      .map((r) => ({
+        causeName: r.cause_name,
+        deaths: r.deaths,
+        sharePercent: (r.deaths / allCauses.deaths) * 100,
+      }));
+
+    return { year: latestYear, causes };
+  },
+  ["leading-causes"],
+  { revalidate: REFERENCE_DATA_REVALIDATE_SECONDS }
+);
+
 export const getMascotQuips = unstable_cache(
   async (): Promise<MascotQuipRow[]> => {
     const { data, error } = await supabase

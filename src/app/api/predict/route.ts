@@ -1,6 +1,7 @@
 import { predict, type AnsweredFactor, type InterventionOption } from "@/lib/predict";
 import {
   getInterventions,
+  getLeadingCauses,
   getRiskFactorLevels,
   getRiskFactors,
   getStateLifeTable,
@@ -55,11 +56,12 @@ export async function POST(request: Request) {
     return badRequest("answers must be an object of risk_factor_key -> answer.");
   }
 
-  const [lifeTable, riskFactors, levels, interventionRows] = await Promise.all([
+  const [lifeTable, riskFactors, levels, interventionRows, leadingCauses] = await Promise.all([
     getStateLifeTable(stateFips, sex),
     getRiskFactors(),
     getRiskFactorLevels(),
     getInterventions(),
+    getLeadingCauses(stateFips),
   ]);
 
   const riskFactorByKey = new Map(riskFactors.map((r) => [r.key, r]));
@@ -141,5 +143,5 @@ export async function POST(request: Request) {
     batteryPercent: result.batteryPercent,
   });
 
-  return Response.json(result);
+  return Response.json({ ...result, leadingCauses });
 }

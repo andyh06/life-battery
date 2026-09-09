@@ -118,6 +118,13 @@ export default async function MethodologyPage() {
             <strong className="text-foreground">What it is not good for:</strong> a precise number of
             years. Treat the battery percentage as a rough, directional estimate, not a forecast.
           </li>
+          <li className="border-l-2 border-brand pl-4">
+            The &quot;most common causes of death&quot; panel on the result page uses CDC/NCHS data
+            that is reported by <strong className="text-foreground">state only</strong> — it has no
+            age or sex breakdown. So that panel shows the leading causes for your whole state, all
+            ages and both sexes, not anything matched to you. Age- and sex-stratified cause-of-death
+            data exists in CDC WONDER and would be the natural next improvement here.
+          </li>
         </ul>
       </section>
 

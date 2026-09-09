@@ -6,12 +6,11 @@ import { Button } from "@/components/ui/button";
 import type { RiskFactorLevelRow, RiskFactorRow, Sex, StateRow } from "@/lib/data";
 import { bmiFromImperial } from "@/lib/bmi";
 import { computeExerciseMinutesPerWeek, type ExerciseIntensity } from "@/lib/exercise";
-import type { PredictResult } from "@/lib/predict";
 import { LandingScreen } from "./landing-screen";
 import { ModeSelectScreen } from "./mode-select-screen";
 import { Progress } from "@/components/ui/progress";
 import { QuestionScreen } from "./question-screen";
-import { ResultScreen } from "./result/result-screen";
+import { ResultScreen, type ResultData } from "./result/result-screen";
 import { StatePicker } from "./state-picker";
 import type { Answers, QuestionStep, Stage, Tier, UnitSystem } from "./types";
 
@@ -61,7 +60,7 @@ export function LifeBatteryFlow({ states, riskFactors, riskFactorLevels }: LifeB
   const [exerciseIntensity, setExerciseIntensity] = useState<ExerciseIntensity>("moderate");
   const [stepIndex, setStepIndex] = useState(0);
   const [direction, setDirection] = useState<1 | -1>(1);
-  const [result, setResult] = useState<PredictResult | null>(null);
+  const [result, setResult] = useState<ResultData | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Age and sex are fixed, then every risk_factors row for the chosen tier,
@@ -84,6 +83,8 @@ export function LifeBatteryFlow({ states, riskFactors, riskFactorLevels }: LifeB
   // 2 fixed steps (age, sex) + however many risk_factors rows carry that tier.
   const quickCount = 2 + riskFactors.filter((rf) => rf.tier === "quick").length;
   const advancedCount = 2 + riskFactors.filter((rf) => rf.tier === "advanced").length;
+
+  const stateName = states.find((s) => s.fips === stateFips)?.name ?? "your state";
 
   function handleAnswerChange(riskFactorKey: string, value: string | number) {
     setAnswers((prev) => ({ ...prev, [riskFactorKey]: value }));
@@ -147,7 +148,7 @@ export function LifeBatteryFlow({ states, riskFactors, riskFactorLevels }: LifeB
         const body = await response.json().catch(() => ({}) as { error?: string });
         throw new Error(body.error ?? `Request failed with status ${response.status}`);
       }
-      const data: PredictResult = await response.json();
+      const data: ResultData = await response.json();
       setResult(data);
       setStage("result");
     } catch (err) {
@@ -305,7 +306,7 @@ export function LifeBatteryFlow({ states, riskFactors, riskFactorLevels }: LifeB
         ) : null}
 
         {stage === "result" && result ? (
-          <ResultScreen result={result} onStartOver={handleStartOver} />
+          <ResultScreen result={result} stateName={stateName} onStartOver={handleStartOver} />
         ) : null}
 
         {stage === "error" ? (
