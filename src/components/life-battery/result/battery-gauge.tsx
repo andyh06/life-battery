@@ -38,14 +38,17 @@ export function BatteryGauge({
     return () => controls.stop();
   }, [batteryPercent, prefersReducedMotion]);
 
+  const bandLeft = uncertaintyBand.lowerBatteryPercent;
+  const bandWidth = Math.max(0, uncertaintyBand.upperBatteryPercent - uncertaintyBand.lowerBatteryPercent);
+
   return (
     <Card className="w-full border-none bg-transparent shadow-none">
-      <CardHeader className="px-0">
+      <CardHeader>
         <CardTitle className="text-lg font-normal tracking-wide text-muted-foreground uppercase">
           Life Battery
         </CardTitle>
       </CardHeader>
-      <CardContent className="flex flex-col gap-6 px-0">
+      <CardContent className="flex flex-col gap-6">
         {/* The battery never turns red at low values — yellow is the fill at every level, so the number is never read as a status. */}
         <div className="relative">
           <Progress
@@ -61,15 +64,25 @@ export function BatteryGauge({
               range of plausible outcomes — this band (the interquartile
               range of the age-at-death distribution) replaces the hard edge
               with a visible width, in the red/yellow stripe reserved for
-              "this is a range," not a status. */}
+              "this is a range," not a status. Anchored to the bottom of this
+              wrapper (matching the track's own position) rather than
+              inset-y-0 against the whole wrapper — the wrapper also contains
+              the giant percentage label above the track, so inset-y-0 was
+              stretching the band from the top of THAT, leaving it floating
+              above the bar instead of sitting on it. */}
           <div
             aria-hidden="true"
-            className="hazard-stripes-band pointer-events-none absolute inset-y-0 h-8"
-            style={{
-              left: `${uncertaintyBand.lowerBatteryPercent}%`,
-              width: `${Math.max(0, uncertaintyBand.upperBatteryPercent - uncertaintyBand.lowerBatteryPercent)}%`,
-            }}
+            className="hazard-stripes-band pointer-events-none absolute bottom-0 h-8"
+            style={{ left: `${bandLeft}%`, width: `${bandWidth}%` }}
           />
+        </div>
+        <div className="relative h-4">
+          <span
+            className="absolute top-0 -translate-x-1/2 text-[10px] font-medium tracking-wide text-muted-foreground uppercase"
+            style={{ left: `${bandLeft + bandWidth / 2}%` }}
+          >
+            Likely range
+          </span>
         </div>
         <p className="text-lg text-muted-foreground">
           About <AnimatedNumber value={adjustedEx} decimals={1} className="font-semibold text-foreground" /> years

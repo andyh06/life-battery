@@ -37,10 +37,12 @@ export function ResultScreen({ result, stateName, onStartOver }: ResultScreenPro
         survivalMilestones={result.survivalMilestones}
       />
       <div className="hazard-stripes h-1.5 w-full opacity-60" />
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-        <ContributionsPanel contributions={result.contributions} />
-        <InterventionsPanel interventions={result.interventions} />
-      </div>
+      <ContributionsPanel
+        baselineEx={result.baselineEx}
+        adjustedEx={result.adjustedEx}
+        contributions={result.contributions}
+      />
+      <InterventionsPanel interventions={result.interventions} />
       <LeadingCausesPanel stateName={stateName} leadingCauses={result.leadingCauses} />
       <HowCalculated />
       <DisclaimerPanel />
