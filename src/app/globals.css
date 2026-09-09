@@ -160,6 +160,19 @@
   );
 }
 
+/* Red/yellow variant, reserved for the battery's uncertainty band so it
+   reads as distinct from the plain black/yellow "empty" stripe it overlaps —
+   a graphic accent marking "this part is a range," never a status color. */
+.hazard-stripes-band {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    var(--danger) 0px,
+    var(--danger) 8px,
+    var(--brand) 8px,
+    var(--brand) 16px
+  );
+}
+
 /* Thin caution tape framing the viewport itself ("page edges"). */
 body::before,
 body::after {

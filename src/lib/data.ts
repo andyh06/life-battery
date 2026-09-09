@@ -49,7 +49,20 @@ export interface RiskFactorLevelRow {
   maxValue: number | null;
   /** One-line explanation shown in a tooltip next to this option, when present. */
   description: string | null;
+  /** The published study this hazard ratio comes from, if any — see sources table. */
+  sourceId: string | null;
+  /** Notes when this row is interpolated between published endpoints rather than itself reported by the source. */
+  citationNote: string | null;
   sortOrder: number;
+}
+
+export interface SourceRow {
+  id: string;
+  name: string;
+  publisher: string | null;
+  url: string | null;
+  year: number | null;
+  notes: string | null;
 }
 
 export interface InterventionRow {
@@ -156,7 +169,7 @@ export const getRiskFactorLevels = unstable_cache(
     const { data, error } = await supabase
       .from("risk_factor_levels")
       .select(
-        "risk_factor_key, level_key, label, hazard_ratio, applies_to_sex, min_value, max_value, description, sort_order"
+        "risk_factor_key, level_key, label, hazard_ratio, applies_to_sex, min_value, max_value, description, source_id, citation_note, sort_order"
       )
       .order("sort_order", { ascending: true });
 
@@ -170,10 +183,34 @@ export const getRiskFactorLevels = unstable_cache(
       minValue: r.min_value,
       maxValue: r.max_value,
       description: r.description,
+      sourceId: r.source_id,
+      citationNote: r.citation_note,
       sortOrder: r.sort_order,
     }));
   },
   ["risk-factor-levels"],
+  { revalidate: REFERENCE_DATA_REVALIDATE_SECONDS }
+);
+
+/** Every dataset/study the app cites, for the /methodology sources table and per-hazard-ratio links. */
+export const getSources = unstable_cache(
+  async (): Promise<SourceRow[]> => {
+    const { data, error } = await supabase
+      .from("sources")
+      .select("id, name, publisher, url, year, notes")
+      .order("year", { ascending: true });
+
+    if (error) throw new Error(`sources query failed: ${error.message}`);
+    return (data ?? []).map((r) => ({
+      id: r.id,
+      name: r.name,
+      publisher: r.publisher,
+      url: r.url,
+      year: r.year,
+      notes: r.notes,
+    }));
+  },
+  ["sources"],
   { revalidate: REFERENCE_DATA_REVALIDATE_SECONDS }
 );
 

@@ -78,6 +78,47 @@ describe("predict", () => {
       expect(Number.isFinite(iv.yearsGained)).toBe(true);
       expect(iv.yearsGained).toBeGreaterThanOrEqual(0);
     }
+
+    expect(result.survivalMilestones.length).toBeLessThanOrEqual(2);
+    for (const m of result.survivalMilestones) {
+      expect(m.probabilityPercent).toBeGreaterThanOrEqual(0);
+      expect(m.probabilityPercent).toBeLessThanOrEqual(100);
+    }
+    expect(result.uncertaintyBand.lowerBatteryPercent).toBeGreaterThanOrEqual(0);
+    expect(result.uncertaintyBand.upperBatteryPercent).toBeLessThanOrEqual(100);
+    expect(result.uncertaintyBand.lowerBatteryPercent).toBeLessThanOrEqual(
+      result.uncertaintyBand.upperBatteryPercent
+    );
+  });
+
+  it("survival milestones skip ages the person has already passed and stay at most two", () => {
+    const factors: AnsweredFactor[] = [referenceFactor("smoking", 1, 1)];
+
+    const young = predict({ age: 30, lifeTable, factors, interventions: [] });
+    expect(young.survivalMilestones.length).toBeLessThanOrEqual(2);
+    expect(young.survivalMilestones.every((m) => m.age > 30)).toBe(true);
+
+    const old = predict({ age: 85, lifeTable, factors, interventions: [] });
+    expect(old.survivalMilestones.every((m) => m.age > 85)).toBe(true);
+    // Only 90 and 100 remain unpassed at 85, so both should show up.
+    expect(old.survivalMilestones.map((m) => m.age)).toEqual([90, 100]);
+  });
+
+  it("survival probability decreases as the milestone age increases", () => {
+    const factors: AnsweredFactor[] = [referenceFactor("smoking", 1, 1)];
+    const result = predict({ age: 40, lifeTable, factors, interventions: [] });
+    const sorted = [...result.survivalMilestones].sort((a, b) => a.age - b.age);
+    for (let i = 1; i < sorted.length; i++) {
+      expect(sorted[i].probabilityPercent).toBeLessThanOrEqual(sorted[i - 1].probabilityPercent);
+    }
+  });
+
+  it("the uncertainty band brackets the point-estimate battery percent", () => {
+    const factors: AnsweredFactor[] = [referenceFactor("smoking", 2.8), referenceFactor("bmi", 1.45)];
+    const result = predict({ age: 45, lifeTable, factors, interventions: [] });
+
+    expect(result.uncertaintyBand.lowerBatteryPercent).toBeLessThanOrEqual(result.batteryPercent + 0.1);
+    expect(result.uncertaintyBand.upperBatteryPercent).toBeGreaterThanOrEqual(result.batteryPercent - 0.1);
   });
 
   it("a 25-year-old loses more years than a 65-year-old for identical bad answers", () => {

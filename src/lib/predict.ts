@@ -72,6 +72,25 @@ export interface InterventionResult {
   yearsGained: number;
 }
 
+/** One "X% chance of reaching age N" data point, computed from the adjusted table. */
+export interface SurvivalMilestone {
+  age: number;
+  probabilityPercent: number;
+}
+
+/**
+ * The battery fill's edge is a single point estimate, but the underlying
+ * table implies a whole distribution of plausible ages at death. This is
+ * that distribution's interquartile range, expressed on the same 0-100
+ * battery scale as batteryPercent: lowerBatteryPercent is where the fill
+ * would land in the pessimistic (25th-percentile age-at-death) scenario,
+ * upperBatteryPercent the optimistic (75th-percentile) one.
+ */
+export interface UncertaintyBand {
+  lowerBatteryPercent: number;
+  upperBatteryPercent: number;
+}
+
 export interface PredictResult {
   baselineEx: number;
   adjustedEx: number;
@@ -80,6 +99,9 @@ export interface PredictResult {
   batteryPercent: number;
   contributions: ContributionResult[];
   interventions: InterventionResult[];
+  /** At most two milestones, chosen to be the most informative for this person — see pickInformativeMilestones. */
+  survivalMilestones: SurvivalMilestone[];
+  uncertaintyBand: UncertaintyBand;
 }
 
 /**
@@ -135,6 +157,86 @@ function remainingLifeExpectancy(
   return years;
 }
 
+/** Ages the result screen offers to check survival against — not every one is shown; see pickInformativeMilestones. */
+const SURVIVAL_MILESTONE_AGES = [70, 80, 90, 100];
+
+/**
+ * P(alive at `toAge` | alive at `fromAge`) under the adjusted hazard — the
+ * same qxAdjusted = 1 - (1-qx)^H used by remainingLifeExpectancy, just
+ * multiplied through as a survivorship product instead of summed into
+ * years.
+ */
+function survivalProbability(
+  qxByAge: Map<number, number>,
+  fromAge: number,
+  toAge: number,
+  hazard: number
+): number {
+  let survivors = 1;
+  for (let a = fromAge; a < toAge; a++) {
+    const qx = qxByAge.get(a);
+    if (qx === undefined) return survivors;
+    const qxAdjusted = 1 - Math.pow(1 - qx, hazard);
+    survivors *= 1 - qxAdjusted;
+  }
+  return survivors;
+}
+
+/**
+ * Inverse of survivalProbability: the age at which cumulative survival from
+ * `fromAge` first drops to `targetProbability`, linearly interpolated
+ * within the one-year band it crosses in. Used to turn a percentile (e.g.
+ * "the 25th-percentile age at death") into an actual age for the
+ * uncertainty band.
+ */
+function ageAtSurvivalProbability(
+  qxByAge: Map<number, number>,
+  fromAge: number,
+  targetProbability: number,
+  hazard: number
+): number {
+  const maxAge = Math.max(...qxByAge.keys());
+  let survivors = 1;
+  for (let a = fromAge; a <= maxAge; a++) {
+    const qx = qxByAge.get(a);
+    if (qx === undefined) break;
+    const qxAdjusted = 1 - Math.pow(1 - qx, hazard);
+    const survivorsAfter = survivors * (1 - qxAdjusted);
+    if (survivorsAfter <= targetProbability) {
+      const span = survivors - survivorsAfter;
+      const fraction = span === 0 ? 0 : (survivors - targetProbability) / span;
+      return a + Math.min(1, Math.max(0, fraction));
+    }
+    survivors = survivorsAfter;
+  }
+  // Never dropped to target within the table (e.g. a very young, very
+  // low-hazard person and a demanding target) — treat as "past the table".
+  return maxAge + 1;
+}
+
+/**
+ * Always showing "reaching 70/80/90/100" is uninformative once several are
+ * near-certain or near-impossible for this person — a 30-year-old's "99%
+ * chance of reaching 70" says nothing. Picks the milestone closest to a
+ * coin-flip (most informative on its own) plus its neighbor, so the pair
+ * brackets the person's actual likely range rather than always being the
+ * same four ages.
+ */
+function pickInformativeMilestones(milestones: SurvivalMilestone[]): SurvivalMilestone[] {
+  if (milestones.length <= 2) return milestones;
+  let bestIndex = 0;
+  let bestDistance = Infinity;
+  milestones.forEach((m, i) => {
+    const distance = Math.abs(m.probabilityPercent - 50);
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      bestIndex = i;
+    }
+  });
+  const partnerIndex = bestIndex + 1 < milestones.length ? bestIndex + 1 : bestIndex - 1;
+  return [bestIndex, partnerIndex].sort((a, b) => a - b).map((i) => milestones[i]);
+}
+
 function round(value: number, decimals: number): number {
   const factor = 10 ** decimals;
   return Math.round(value * factor) / factor;
@@ -163,6 +265,34 @@ export function predict(input: PredictInput): PredictResult {
   const lifespan = age + adjustedExRaw;
   const batteryPercent =
     lifespan > 0 ? Math.min(100, Math.max(0, (adjustedExRaw / lifespan) * 100)) : 0;
+
+  const maxTableAge = qxByAge.size > 0 ? Math.max(...qxByAge.keys()) : age;
+  const allMilestones: SurvivalMilestone[] = SURVIVAL_MILESTONE_AGES.filter(
+    (m) => m > age && m <= maxTableAge
+  ).map((m) => ({
+    age: m,
+    probabilityPercent: round(survivalProbability(qxByAge, age, m, hazard) * 100, 0),
+  }));
+  const survivalMilestones = pickInformativeMilestones(allMilestones);
+
+  let uncertaintyBand: UncertaintyBand = { lowerBatteryPercent: 0, upperBatteryPercent: 0 };
+  if (lifespan > 0 && qxByAge.size > 0) {
+    // Pessimistic: age at which only 75% of people like this are still
+    // alive (25th percentile of age at death). Optimistic: the 25%-survival
+    // age (75th percentile). Expressed as battery-percent positions using
+    // the same denominator (expectedAgeAtDeath) as the fill itself, so the
+    // band sits on the same scale as the point estimate.
+    const pessimisticAge = ageAtSurvivalProbability(qxByAge, age, 0.75, hazard);
+    const optimisticAge = ageAtSurvivalProbability(qxByAge, age, 0.25, hazard);
+    const toBatteryPercent = (deathAge: number) =>
+      Math.min(100, Math.max(0, ((deathAge - age) / lifespan) * 100));
+    const lower = toBatteryPercent(pessimisticAge);
+    const upper = toBatteryPercent(optimisticAge);
+    uncertaintyBand = {
+      lowerBatteryPercent: round(Math.min(lower, upper), 1),
+      upperBatteryPercent: round(Math.max(lower, upper), 1),
+    };
+  }
 
   const contributions: ContributionResult[] = factors
     .map((factor) => {
@@ -219,5 +349,7 @@ export function predict(input: PredictInput): PredictResult {
     batteryPercent: round(batteryPercent, 1),
     contributions,
     interventions: interventionResults,
+    survivalMilestones,
+    uncertaintyBand,
   };
 }
