@@ -86,12 +86,17 @@ create index on leading_causes (state_fips, year);
 -- (air quality, drinking water violations, smoking rate, etc.)
 -- ---------------------------------------------------------------
 create table indicators (
-  key             text primary key,
-  label           text not null,
-  unit            text,
-  description     text,
-  higher_is_worse boolean not null default true,
-  source_id       text references sources(id)
+  key               text primary key,
+  label             text not null,
+  unit              text,
+  description       text,
+  higher_is_worse   boolean not null default true,
+  source_id         text references sources(id),
+  -- Some indicators are shown for context but are too confounded by
+  -- non-health factors (e.g. state reporting/enforcement intensity) to treat
+  -- as a mortality input. predict.ts must filter on this before using an
+  -- indicator's value in the model.
+  include_in_model  boolean not null default true
 );
 
 create table state_indicators (

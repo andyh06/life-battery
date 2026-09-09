@@ -319,8 +319,8 @@ def load_epa_water():
     query needs no join and no bulk download:
     https://enviro.epa.gov/enviro/ef_metadata_html.ef_metadata_table?p_table_name=VIOLATION&p_topic=SDWIS
 
-    Fills state_indicators.water_violations = rate per 100,000 people of the
-    number currently served by a public water system with an unresolved
+    Fills state_indicators.water_violations = percent of the state's
+    population currently served by a public water system with an unresolved
     health-based violation (COMPLIANCE_STATUS_CODE 'K' or 'O' <=> RTC_DATE is
     null, i.e. not yet returned to compliance — confirmed by sampling),
     deduplicated by PWSID so a system with several concurrent violations
@@ -334,6 +334,11 @@ def load_epa_water():
 
     This is a live snapshot (not a fixed reporting year) for the violation
     count; the population denominator is the 2024 vintage estimate.
+
+    Display-only: SDWIS reporting/enforcement intensity varies by state
+    primacy agency, so this is not a clean water-quality signal on its own —
+    indicators.include_in_model is false for this key, and predict.ts must
+    not fold it into the mortality calculation.
     """
     EF = "https://data.epa.gov/efservice"
     POP_URL = ("https://www2.census.gov/programs-surveys/popest/datasets/"
@@ -361,7 +366,7 @@ def load_epa_water():
         rows.append({
             "state_fips": fips,
             "indicator_key": "water_violations",
-            "value": round(affected / state_pop * 100_000, 1) if state_pop else None,
+            "value": round(affected / state_pop * 100, 2) if state_pop else None,
             "year": SNAPSHOT_YEAR,
         })
         print(f"  {i}/{len(POSTAL_STATE_NAMES)} states queried", end="\r")
