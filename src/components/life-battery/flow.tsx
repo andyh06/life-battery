@@ -12,6 +12,7 @@ import { Progress } from "@/components/ui/progress";
 import { QuestionScreen } from "./question-screen";
 import { ResultScreen, type ResultData } from "./result/result-screen";
 import { StatePicker } from "./state-picker";
+import { buildQuestionSteps } from "./steps";
 import type { Answers, QuestionStep, Stage, Tier, UnitSystem } from "./types";
 
 const DEFAULT_AGE = 30;
@@ -63,15 +64,12 @@ export function LifeBatteryFlow({ states, riskFactors, riskFactorLevels }: LifeB
   const [result, setResult] = useState<ResultData | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Age and sex are fixed, then every risk_factors row for the chosen tier,
-  // in sort_order. Rebuilds only when the tier toggle changes.
-  const steps: QuestionStep[] = useMemo(() => {
-    const riskSteps: QuestionStep[] = riskFactors
-      .filter((rf) => rf.tier === tier)
-      .sort((a, b) => a.sortOrder - b.sortOrder)
-      .map((riskFactor) => ({ kind: "risk-factor", riskFactor }));
-    return [{ kind: "age" }, { kind: "sex" }, ...riskSteps];
-  }, [riskFactors, tier]);
+  // Rebuilds only when the tier toggle changes — see steps.ts for the logic
+  // itself (a plain function so it's unit-tested without mounting this).
+  const steps: QuestionStep[] = useMemo(
+    () => buildQuestionSteps(riskFactors, tier),
+    [riskFactors, tier]
+  );
 
   const hasHeightWeightStep = steps.some(
     (s) => s.kind === "risk-factor" && s.riskFactor.inputType === "height_weight"
@@ -80,9 +78,11 @@ export function LifeBatteryFlow({ states, riskFactors, riskFactorLevels }: LifeB
     (s) => s.kind === "risk-factor" && s.riskFactor.key === "activity"
   );
 
-  // 2 fixed steps (age, sex) + however many risk_factors rows carry that tier.
+  // 2 fixed steps (age, sex) + however many risk_factors rows carry that
+  // tier. Advanced is cumulative (see steps.ts), so its count is every row,
+  // not just the advanced-tier ones.
   const quickCount = 2 + riskFactors.filter((rf) => rf.tier === "quick").length;
-  const advancedCount = 2 + riskFactors.filter((rf) => rf.tier === "advanced").length;
+  const advancedCount = 2 + riskFactors.length;
 
   const stateName = states.find((s) => s.fips === stateFips)?.name ?? "your state";
 
